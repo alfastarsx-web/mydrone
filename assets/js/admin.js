@@ -74,10 +74,12 @@
       '<div class="sep"></div>' +
       '<a href="index.html" target="_blank">Saytni ochish ↗</a>' +
       '<a data-act="reset">Demo bazani tiklash</a>' +
+      '<a data-act="theme">' + (S.effTheme() === 'dark' ? "☀ Yorug' rejim" : "☾ Qorong'i rejim") + '</a>' +
       '<a data-act="exit">Chiqish</a>' +
       '</aside><div class="main" id="pane"></div></div>';
     $$('[data-p]').forEach(a => a.addEventListener('click', () => { page = a.dataset.p; render(); }));
     $('[data-act="exit"]').addEventListener('click', () => { sessionStorage.removeItem(AUTH); render(); });
+    $('[data-act="theme"]').addEventListener('click', () => { S.toggleTheme(); render(); });
     $('[data-act="reset"]').addEventListener('click', () => {
       if (confirm('Barcha o\'zgarishlar o\'chib, demo baza qayta tiklanadi. Davom etamizmi?')) S.reset();
     });

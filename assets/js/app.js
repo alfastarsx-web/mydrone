@@ -30,7 +30,9 @@
     inst: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="3.8"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor"/></svg>',
     check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="17" height="17"><path d="M5 12.5l4.5 4.5L19 7"/></svg>',
     burger: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" width="20" height="20"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
-    empty: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.5-4.5"/></svg>'
+    empty: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.5-4.5"/></svg>',
+    sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="19" height="19"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.2 5.2l1.6 1.6M17.2 17.2l1.6 1.6M18.8 5.2l-1.6 1.6M6.8 17.2l-1.6 1.6"/></svg>',
+    moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="19" height="19"><path d="M20 14.5A8.2 8.2 0 019.5 4a8.3 8.3 0 106.9 12.4c1.4 0 2.6-.7 3.6-1.9z"/></svg>'
   };
 
   /* ---------- Marshrut ---------- */
@@ -122,6 +124,7 @@
       '<div class="search"><input id="q" type="search" placeholder="' + t('searchPh') + '" autocomplete="off">' +
       '<button class="s-btn">' + ic.search + '</button><div id="ac"></div></div>' +
       '<div class="hd-acts">' +
+      '<button class="icon-btn" data-theme-toggle title="' + t('themeSwitch') + '">' + (S.effTheme() === 'dark' ? ic.sun : ic.moon) + '</button>' +
       '<div class="lang"><button data-lang="uz" class="' + (S.lang === 'uz' ? 'on' : '') + '">UZ</button>' +
       '<button data-lang="ru" class="' + (S.lang === 'ru' ? 'on' : '') + '">RU</button></div>' +
       '<a class="icon-btn" href="#/account/favs" title="' + t('favs') + '">' + ic.heart.replace('17', '19').replace('17', '19') + '</a>' +
@@ -906,6 +909,14 @@
         S.save(); closeModal(); toast(t('sent'), 'ok'); route();
       }));
   }
+
+  /* ---------- Mavzu almashtirish ---------- */
+  document.addEventListener('click', e => {
+    if (!e.target.closest('[data-theme-toggle]')) return;
+    S.toggleTheme();
+    renderHeader();
+    toast(S.effTheme() === 'dark' ? t('themeDark') : t('themeLight'));
+  });
 
   /* ---------- Til almashtirish ---------- */
   document.addEventListener('click', e => {

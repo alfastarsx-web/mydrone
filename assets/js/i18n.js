@@ -88,7 +88,8 @@ window.I18N = {
     fRights:'Barcha huquqlar himoyalangan', fDemo:'Demo versiya — ko\'rsatilgan narx va mahsulotlar namunaviy',
     /* misc */
     currency:'so\'m', pieces:'dona', back:'Orqaga', close:'Yopish', search:'Qidirish',
-    readMore:'To\'liq o\'qish', minutes:'daqiqa', published:'Chop etilgan'
+    readMore:'To\'liq o\'qish', minutes:'daqiqa', published:'Chop etilgan',
+    themeSwitch:'Mavzuni almashtirish', themeDark:'Qorong\'i rejim yoqildi', themeLight:'Yorug\' rejim yoqildi'
   },
 
   ru: {
@@ -166,6 +167,7 @@ window.I18N = {
     fFaq:'Частые вопросы', fBlog:'Блог', fRef:'Реферальная программа',
     fRights:'Все права защищены', fDemo:'Демо-версия — цены и товары показаны для примера',
     currency:'сум', pieces:'шт', back:'Назад', close:'Закрыть', search:'Поиск',
-    readMore:'Читать полностью', minutes:'минут', published:'Опубликовано'
+    readMore:'Читать полностью', minutes:'минут', published:'Опубликовано',
+    themeSwitch:'Сменить тему', themeDark:'Включена тёмная тема', themeLight:'Включена светлая тема'
   }
 };

@@ -4,7 +4,7 @@
 (function () {
   const K = {
     db: 'dm_db_v2', cart: 'dm_cart_v1', user: 'dm_user_v1',
-    favs: 'dm_favs_v1', lang: 'dm_lang_v1', ref: 'dm_ref_v1'
+    favs: 'dm_favs_v1', lang: 'dm_lang_v1', ref: 'dm_ref_v1', theme: 'dm_theme_v1'
   };
 
   const clone = o => JSON.parse(JSON.stringify(o));
@@ -71,6 +71,21 @@
   const setLang = l => { lang = l; write(K.lang, l); };
   const t = k => (I18N[lang] && I18N[lang][k]) || (I18N.uz[k] || k);
   const L = (obj, field) => obj ? (obj[field + '_' + lang] ?? obj[field + '_uz'] ?? obj[field] ?? '') : '';
+
+  /* ---------- Mavzu (yorug' / qorong'i) ---------- */
+  let theme = read(K.theme, null);          // null = tizim sozlamasiga ergashadi
+  function sysTheme() {
+    try { return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
+    catch (e) { return 'light'; }
+  }
+  const effTheme = () => theme || sysTheme();
+  function setTheme(v) {
+    theme = v; write(K.theme, v);
+    document.documentElement.dataset.theme = v;
+    const meta = document.querySelector('meta[name="theme-color"]:not([media])');
+    if (meta) meta.content = v === 'dark' ? '#080c17' : '#f5f7fb';
+  }
+  if (theme) { document.documentElement.dataset.theme = theme; }
 
   /* ---------- Savat ---------- */
   let cart = read(K.cart, []);
@@ -171,6 +186,7 @@
   window.Store = {
     K, db, save, freshDb,
     get lang() { return lang; }, setLang, t, L,
+    effTheme, setTheme, toggleTheme: () => setTheme(effTheme() === 'dark' ? 'light' : 'dark'),
     get user() { return user; }, login, register, logout, refreshUser,
     get cart() { return cart; }, addToCart, setQty, removeFromCart, clearCart,
     cartCount, cartRows, cartGoods,

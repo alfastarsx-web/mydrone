@@ -4,7 +4,7 @@
 .side .logo{margin-bottom:22px;font-size:18px}
 .side a{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:11px;color:var(--txt-2);font-size:14.5px;font-weight:500;cursor:pointer;margin-bottom:2px}
 .side a:hover{background:var(--panel);color:var(--txt)}
-.side a.on{background:rgba(34,211,238,.11);color:var(--acc)}
+.side a.on{background:var(--acc-soft);color:var(--acc)}
 .side a .n{margin-left:auto;background:var(--panel-2);border-radius:7px;padding:1px 7px;font-size:11.5px;color:var(--txt-2)}
 .side .sep{height:1px;background:var(--line-soft);margin:14px 4px}
 .main{padding:26px 30px 60px;min-width:0}
@@ -20,7 +20,7 @@
 table.dt{width:100%;border-collapse:collapse;font-size:14px;min-width:640px}
 table.dt th{text-align:left;padding:11px 16px;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--txt-3);background:var(--bg-2);white-space:nowrap;font-weight:600}
 table.dt td{padding:11px 16px;border-top:1px solid var(--line-soft);vertical-align:middle}
-table.dt tr:hover td{background:rgba(34,211,238,.035)}
+table.dt tr:hover td{background:var(--acc-soft2)}
 table.dt img.th{width:46px;height:36px;object-fit:cover;border-radius:8px}
 .acts{display:flex;gap:6px;justify-content:flex-end}
 .ib{width:32px;height:32px;border-radius:9px;border:1px solid var(--line);background:transparent;color:var(--txt-2);cursor:pointer;display:grid;place-items:center;font-size:14px}
