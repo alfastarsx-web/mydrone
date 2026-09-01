@@ -1,4 +1,4 @@
-# DronMarket.uz — onlayn-do'kon (frontend + demo admin panel)
+# MyDrone.uz — onlayn-do'kon (frontend + demo admin panel)
 
 `TZ_drone_import_sayt.pdf` texnik topshirig'i asosida qurilgan onlayn-do'kon prototipi:
 Xitoydan dron va texnika import qilib sotuvchi sayt.
@@ -22,8 +22,8 @@ So'ng brauzerda oching:
 
 | Qayer | Login | Parol |
 |---|---|---|
-| Sayt (mijoz kabineti) | `demo@dronmarket.uz` | `demo12345` |
-| Admin panel | `admin@dronmarket.uz` | `admin12345` |
+| Sayt (mijoz kabineti) | `demo@mydrone.uz` | `demo12345` |
+| Admin panel | `admin@mydrone.uz` | `admin12345` |
 
 Promokodlar: `SALOM10` (−10%), `DRON500` (−500 000 so'm).
 

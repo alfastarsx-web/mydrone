@@ -1,4 +1,4 @@
-/* ===== DronMarket — frontend ilovasi (vanilla JS, hash-router) ===== */
+/* ===== MyDrone — frontend ilovasi (vanilla JS, hash-router) ===== */
 (function () {
   const S = window.Store, t = k => S.t(k), L = (o, f) => S.L(o, f);
   const money = n => S.money(n);
@@ -118,7 +118,7 @@
       '<a href="tel:' + st.phone.replace(/\s/g, '') + '">' + st.phone + '</a>' +
       '</div></div>' +
       '<header class="hd"><div class="wrap hd-in">' +
-      '<a class="logo" href="#/"><span class="logo-mark">' + ic.drone + '</span>Dron<b>Market</b></a>' +
+      '<a class="logo" href="#/"><span class="logo-mark">' + ic.drone + '</span>My<b>Drone</b></a>' +
       '<div class="search"><input id="q" type="search" placeholder="' + t('searchPh') + '" autocomplete="off">' +
       '<button class="s-btn">' + ic.search + '</button><div id="ac"></div></div>' +
       '<div class="hd-acts">' +
@@ -139,7 +139,7 @@
   function renderFooter() {
     const st = S.db.settings;
     $('#ft').innerHTML = '<footer><div class="wrap"><div class="f-grid">' +
-      '<div><a class="logo" href="#/"><span class="logo-mark">' + ic.drone + '</span>Dron<b>Market</b></a>' +
+      '<div><a class="logo" href="#/"><span class="logo-mark">' + ic.drone + '</span>My<b>Drone</b></a>' +
       '<p class="mut sm" style="margin:14px 0 0;max-width:290px">' +
       (S.lang === 'ru' ? 'Импорт дронов и техники из Китая с официальной гарантией и доставкой по Узбекистану.'
         : "Xitoydan dron va texnika importi — rasmiy kafolat va O'zbekiston bo'ylab yetkazib berish bilan.") + '</p>' +
@@ -159,7 +159,7 @@
       '<a href="mailto:' + st.email + '">' + st.email + '</a>' +
       '<span class="mut sm" style="display:block;padding:5px 0">' + esc(L(st, 'address')) + '</span>' +
       '<span class="mut sm" style="display:block">' + esc(L(st, 'workhours')) + '</span></div>' +
-      '</div><div class="f-bot"><span>© 2026 DronMarket.uz — ' + t('fRights') + '</span>' +
+      '</div><div class="f-bot"><span>© 2026 MyDrone.uz — ' + t('fRights') + '</span>' +
       '<span>' + t('fDemo') + ' · <a href="admin.html" style="display:inline;color:var(--acc)">Admin</a></span></div></div></footer>';
   }
 
@@ -572,9 +572,9 @@
   function viewLogin() {
     return '<section><div class="wrap" style="max-width:430px"><div class="card">' +
       '<div class="auth-tabs"><button class="on" data-auth="in">' + t('signin') + '</button><button data-auth="up">' + t('signup') + '</button></div>' +
-      '<form id="fin">' + fld('email', 'Email', 'demo@dronmarket.uz', 'email', true) + fld('pass', t('pass'), 'demo12345', 'password', true) +
+      '<form id="fin">' + fld('email', 'Email', 'demo@mydrone.uz', 'email', true) + fld('pass', t('pass'), 'demo12345', 'password', true) +
       '<button class="btn btn-p btn-block" type="submit">' + t('signin') + '</button>' +
-      '<div class="hint">Demo: <b>demo@dronmarket.uz</b> / <b>demo12345</b><br>' + t('authHint') + '</div></form>' +
+      '<div class="hint">Demo: <b>demo@mydrone.uz</b> / <b>demo12345</b><br>' + t('authHint') + '</div></form>' +
       '<form id="fup" class="hidden">' + fld('name', t('name'), '', 'text', true) + fld('phone', t('phone'), '+998 ', 'tel', true) +
       fld('email', 'Email', '', 'email', true) + fld('pass', t('pass'), '', 'password', true) +
       fld('ref', t('haveRef'), sessionStorage.getItem('dm_ref_code') || '', 'text', false) +
@@ -598,8 +598,8 @@
       : "<h2>Kafolat</h2><ul><li>Dronlar — <strong>12 oy</strong>.</li><li>Aksessuar va batareyalar — <strong>6 oy</strong>.</li><li>Kafolat taloni mahsulot bilan birga beriladi.</li></ul><h2>Kafolat qamrab olmaydigan holatlar</h2><ul><li>Urilib tushish yoki to'qnashuv natijasidagi mexanik shikast.</li><li>Germetik bo'lmagan modellarga suv kirishi.</li><li>Mustaqil ta'mirlash va korpusni ochish.</li><li>Batareyaning tabiiy eskirishi (sig'imning vaqt o'tishi bilan kamayishi).</li></ul><h2>Qaytarish</h2><p>Tovar ko'rinishi, to'liq to'plami va qadog'i saqlangan holda <strong>14 kun</strong> ichida qaytarish yoki almashtirish mumkin. Individual buyurtma asosida keltirilgan mahsulotlar nuqsoni bo'lmasa qaytarilmaydi.</p><h2>Qanday rasmiylashtiriladi</h2><ol><li>Telegram orqali yozing yoki qo'ng'iroq qiling.</li><li>Muammoni tasvirlang, foto yoki video biriktiring.</li><li>Almashtirish, ta'mirlash yoki pulni qaytarishni kelishamiz.</li></ol>");
 
     if (name === 'about') return page(t('fAboutUs'), ru
-      ? '<p>DronMarket — семейный бизнес из Ташкента. Мы привозим дроны и технологичные гаджеты напрямую из Китая (AliExpress, Alibaba, 1688) и продаём в Узбекистане без лишних посреднических наценок.</p><h2>Как мы работаем</h2><ol><li>Отбираем поставщика по рейтингу и отзывам, проверяем партию.</li><li>Консолидируем груз на своём складе в Гуанчжоу.</li><li>Везём в Ташкент и проходим таможенное оформление.</li><li>Выдаём гарантийный талон и помогаем с настройкой.</li></ol><h2>Почему нам доверяют</h2><ul><li>Каждый заказ отслеживается в личном кабинете.</li><li>Отвечаем в Telegram в рабочее время в течение 15 минут.</li><li>Помогаем с запчастями даже после окончания гарантии.</li></ul><h2>Планы</h2><p>Начали с дронов, дальше — камеры, умные гаджеты, робототехника и электротранспорт. Каталог расширяется постоянно.</p>'
-      : "<p>DronMarket — Toshkentdagi oilaviy biznes. Biz dron va texnologik gadjetlarni to'g'ridan-to'g'ri Xitoydan (AliExpress, Alibaba, 1688) olib kelib, O'zbekistonda ortiqcha vositachi ustamasiz sotamiz.</p><h2>Qanday ishlaymiz</h2><ol><li>Yetkazib beruvchini reyting va sharhlar bo'yicha tanlaymiz, partiyani tekshiramiz.</li><li>Yukni Guanchjoudagi o'z omborimizda birlashtiramiz.</li><li>Toshkentga olib kelib, bojxona rasmiylashtiruvidan o'tkazamiz.</li><li>Kafolat talonini beramiz va sozlashda yordam beramiz.</li></ol><h2>Nega bizga ishonishadi</h2><ul><li>Har bir buyurtma shaxsiy kabinetda kuzatiladi.</li><li>Ish vaqtida Telegramda 15 daqiqa ichida javob beramiz.</li><li>Kafolat tugagandan keyin ham ehtiyot qism topishda yordam beramiz.</li></ul><h2>Rejalar</h2><p>Dronlardan boshladik, keyingisi — kameralar, aqlli gadjetlar, robotexnika va elektro-transport. Katalog doimiy kengayib boradi.</p>");
+      ? '<p>MyDrone — семейный бизнес из Ташкента. Мы привозим дроны и технологичные гаджеты напрямую из Китая (AliExpress, Alibaba, 1688) и продаём в Узбекистане без лишних посреднических наценок.</p><h2>Как мы работаем</h2><ol><li>Отбираем поставщика по рейтингу и отзывам, проверяем партию.</li><li>Консолидируем груз на своём складе в Гуанчжоу.</li><li>Везём в Ташкент и проходим таможенное оформление.</li><li>Выдаём гарантийный талон и помогаем с настройкой.</li></ol><h2>Почему нам доверяют</h2><ul><li>Каждый заказ отслеживается в личном кабинете.</li><li>Отвечаем в Telegram в рабочее время в течение 15 минут.</li><li>Помогаем с запчастями даже после окончания гарантии.</li></ul><h2>Планы</h2><p>Начали с дронов, дальше — камеры, умные гаджеты, робототехника и электротранспорт. Каталог расширяется постоянно.</p>'
+      : "<p>MyDrone — Toshkentdagi oilaviy biznes. Biz dron va texnologik gadjetlarni to'g'ridan-to'g'ri Xitoydan (AliExpress, Alibaba, 1688) olib kelib, O'zbekistonda ortiqcha vositachi ustamasiz sotamiz.</p><h2>Qanday ishlaymiz</h2><ol><li>Yetkazib beruvchini reyting va sharhlar bo'yicha tanlaymiz, partiyani tekshiramiz.</li><li>Yukni Guanchjoudagi o'z omborimizda birlashtiramiz.</li><li>Toshkentga olib kelib, bojxona rasmiylashtiruvidan o'tkazamiz.</li><li>Kafolat talonini beramiz va sozlashda yordam beramiz.</li></ol><h2>Nega bizga ishonishadi</h2><ul><li>Har bir buyurtma shaxsiy kabinetda kuzatiladi.</li><li>Ish vaqtida Telegramda 15 daqiqa ichida javob beramiz.</li><li>Kafolat tugagandan keyin ham ehtiyot qism topishda yordam beramiz.</li></ul><h2>Rejalar</h2><p>Dronlardan boshladik, keyingisi — kameralar, aqlli gadjetlar, robotexnika va elektro-transport. Katalog doimiy kengayib boradi.</p>");
 
     if (name === 'referral') return '<section><div class="wrap">' +
       '<div class="banner" style="margin-bottom:26px"><div style="flex:1;min-width:260px">' +

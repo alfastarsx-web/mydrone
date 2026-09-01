@@ -1,4 +1,4 @@
-/* ===== DronMarket — administrator paneli (demo, localStorage) ===== */
+/* ===== MyDrone — administrator paneli (demo, localStorage) ===== */
 (function () {
   const S = window.Store, money = n => S.money(n);
   const $ = (s, r) => (r || document).querySelector(s);
@@ -39,11 +39,11 @@
   function isAuthed() { return sessionStorage.getItem(AUTH) === '1'; }
   function loginScreen() {
     root.innerHTML = '<div class="login-wrap"><div class="card" style="width:100%;max-width:380px">' +
-      '<div class="logo" style="margin-bottom:6px"><span class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><circle cx="5" cy="5" r="2.6"/><circle cx="19" cy="5" r="2.6"/><circle cx="5" cy="19" r="2.6"/><circle cx="19" cy="19" r="2.6"/><rect x="8.5" y="8.5" width="7" height="7" rx="1.6"/></svg></span>Dron<b>Market</b></div>' +
+      '<div class="logo" style="margin-bottom:6px"><span class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><circle cx="5" cy="5" r="2.6"/><circle cx="19" cy="5" r="2.6"/><circle cx="5" cy="19" r="2.6"/><circle cx="19" cy="19" r="2.6"/><rect x="8.5" y="8.5" width="7" height="7" rx="1.6"/></svg></span>My<b>Drone</b></div>' +
       '<p class="mut sm">Administrator paneli</p>' +
-      '<form id="fl" style="margin-top:16px">' + fld('email', 'Email', 'admin@dronmarket.uz', 'email') + fld('pass', 'Parol', 'admin12345', 'password') +
+      '<form id="fl" style="margin-top:16px">' + fld('email', 'Email', 'admin@mydrone.uz', 'email') + fld('pass', 'Parol', 'admin12345', 'password') +
       '<button class="btn btn-p btn-block" type="submit">Kirish</button>' +
-      '<div class="hint">Demo: <b>admin@dronmarket.uz</b> / <b>admin12345</b></div></form>' +
+      '<div class="hint">Demo: <b>admin@mydrone.uz</b> / <b>admin12345</b></div></form>' +
       '<a class="btn btn-ghost btn-block btn-sm" style="margin-top:10px" href="index.html">← Saytga qaytish</a>' +
       '</div></div>';
     $('#fl').addEventListener('submit', e => {
@@ -68,7 +68,7 @@
     const counts = { orders: S.db.orders.length, products: S.db.products.length, cats: S.db.categories.length,
       customers: S.db.users.length, promos: S.db.promos.length, posts: S.db.posts.length, leads: S.db.leads.length };
     root.innerHTML = '<div class="adm"><aside class="side">' +
-      '<div class="logo"><span class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><circle cx="5" cy="5" r="2.6"/><circle cx="19" cy="5" r="2.6"/><circle cx="5" cy="19" r="2.6"/><circle cx="19" cy="19" r="2.6"/><rect x="8.5" y="8.5" width="7" height="7" rx="1.6"/></svg></span>Dron<b>Market</b></div>' +
+      '<div class="logo"><span class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><circle cx="5" cy="5" r="2.6"/><circle cx="19" cy="5" r="2.6"/><circle cx="5" cy="19" r="2.6"/><circle cx="19" cy="19" r="2.6"/><rect x="8.5" y="8.5" width="7" height="7" rx="1.6"/></svg></span>My<b>Drone</b></div>' +
       PAGES.map(p => '<a data-p="' + p[0] + '" class="' + (page === p[0] ? 'on' : '') + '">' + p[1] +
         (counts[p[0]] != null ? '<span class="n">' + counts[p[0]] + '</span>' : '') + '</a>').join('') +
       '<div class="sep"></div>' +

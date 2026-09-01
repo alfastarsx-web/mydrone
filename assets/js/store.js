@@ -3,7 +3,7 @@
    `fetch('/api/...')` chaqiruvlariga almashtirish yetarli bo'ladi. */
 (function () {
   const K = {
-    db: 'dm_db_v1', cart: 'dm_cart_v1', user: 'dm_user_v1',
+    db: 'dm_db_v2', cart: 'dm_cart_v1', user: 'dm_user_v1',
     favs: 'dm_favs_v1', lang: 'dm_lang_v1', ref: 'dm_ref_v1'
   };
 
@@ -20,10 +20,10 @@
       posts: clone(SEED.posts),
       faq: clone(SEED.faq),
       reviews: {},                    // { productId: [ {name,rate,date,text} ] }
-      users: [{ id: 'u_demo', name: 'Aziz Karimov', email: 'demo@dronmarket.uz', pass: 'demo12345',
+      users: [{ id: 'u_demo', name: 'Aziz Karimov', email: 'demo@mydrone.uz', pass: 'demo12345',
                 phone: '+998 90 777 12 34', ref: 'AZIZ7734', refBy: null, bonus: 250000,
                 invited: 2, earned: 412000, created: '2026-05-14' }],
-      admins: [{ email: 'admin@dronmarket.uz', pass: 'admin12345', name: 'Administrator' }],
+      admins: [{ email: 'admin@mydrone.uz', pass: 'admin12345', name: 'Administrator' }],
       orders: demoOrders(),
       promos: [
         { code: 'SALOM10', type: 'percent', value: 10, active: true, note_uz: 'Birinchi xarid uchun 10%', note_ru: 'Первая покупка −10%' },

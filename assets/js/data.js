@@ -1,16 +1,16 @@
-/* ===== DronMarket — demo ma'lumotlar (seed) =====
+/* ===== MyDrone — demo ma'lumotlar (seed) =====
    Bu fayl saytning boshlang'ich katalogi. Admin panelda o'zgartirilgan
    ma'lumotlar localStorage'da saqlanadi va shu seed ustidan ustuvor bo'ladi. */
 window.SEED = {
   settings: {
-    brand: 'DronMarket',
-    domain: 'dronmarket.uz',
+    brand: 'MyDrone',
+    domain: 'mydrone.uz',
     phone: '+998 90 123 45 67',
     phone2: '+998 71 200 00 11',
-    email: 'info@dronmarket.uz',
-    telegram: 'dronmarket_uz',
+    email: 'info@mydrone.uz',
+    telegram: 'mydrone_uz',
     whatsapp: '998901234567',
-    instagram: 'dronmarket.uz',
+    instagram: 'mydrone.uz',
     address_uz: "Toshkent sh., Chilonzor t., Bunyodkor ko'chasi 12",
     address_ru: 'г. Ташкент, Чиланзарский р-н, ул. Бунёдкор 12',
     workhours_uz: 'Dush–Shan: 09:00–19:00',
