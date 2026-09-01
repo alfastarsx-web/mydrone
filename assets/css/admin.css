@@ -1,0 +1,48 @@
+/* ===== Admin panel uslublari ===== */
+.adm{display:grid;grid-template-columns:246px 1fr;min-height:100vh}
+.side{background:var(--bg-2);border-right:1px solid var(--line-soft);padding:18px 14px;position:sticky;top:0;height:100vh;overflow-y:auto}
+.side .logo{margin-bottom:22px;font-size:18px}
+.side a{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:11px;color:var(--txt-2);font-size:14.5px;font-weight:500;cursor:pointer;margin-bottom:2px}
+.side a:hover{background:var(--panel);color:var(--txt)}
+.side a.on{background:rgba(34,211,238,.11);color:var(--acc)}
+.side a .n{margin-left:auto;background:var(--panel-2);border-radius:7px;padding:1px 7px;font-size:11.5px;color:var(--txt-2)}
+.side .sep{height:1px;background:var(--line-soft);margin:14px 4px}
+.main{padding:26px 30px 60px;min-width:0}
+.adm-hd{display:flex;align-items:center;gap:14px;margin-bottom:22px;flex-wrap:wrap}
+.adm-hd h1{font-size:25px}
+.adm-hd .sp{flex:1}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:15px;margin-bottom:24px}
+.tbl-wrap{background:var(--panel);border:1px solid var(--line-soft);border-radius:var(--r-lg);overflow:hidden}
+.tbl-top{display:flex;gap:11px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line-soft);flex-wrap:wrap}
+.tbl-top input,.tbl-top select{height:40px;border-radius:11px;border:1px solid var(--line);background:var(--bg-2);padding:0 12px;outline:none}
+.tbl-top input:focus,.tbl-top select:focus{border-color:var(--acc)}
+.tbl-scroll{overflow-x:auto}
+table.dt{width:100%;border-collapse:collapse;font-size:14px;min-width:640px}
+table.dt th{text-align:left;padding:11px 16px;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--txt-3);background:var(--bg-2);white-space:nowrap;font-weight:600}
+table.dt td{padding:11px 16px;border-top:1px solid var(--line-soft);vertical-align:middle}
+table.dt tr:hover td{background:rgba(34,211,238,.035)}
+table.dt img.th{width:46px;height:36px;object-fit:cover;border-radius:8px}
+.acts{display:flex;gap:6px;justify-content:flex-end}
+.ib{width:32px;height:32px;border-radius:9px;border:1px solid var(--line);background:transparent;color:var(--txt-2);cursor:pointer;display:grid;place-items:center;font-size:14px}
+.ib:hover{border-color:var(--acc);color:var(--acc)}
+.ib.del:hover{border-color:var(--bad);color:var(--bad)}
+.modal.wide{max-width:760px}
+.bar{height:9px;border-radius:5px;background:var(--bg-2);overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),var(--acc-2))}
+.chart{display:flex;align-items:flex-end;gap:9px;height:150px;padding-top:10px}
+.chart div{flex:1;background:linear-gradient(180deg,var(--acc),var(--acc-2));border-radius:7px 7px 0 0;position:relative;min-height:4px;opacity:.85}
+.chart div:hover{opacity:1}
+.chart div span{position:absolute;bottom:-22px;left:0;right:0;text-align:center;font-size:11px;color:var(--txt-3)}
+.chart div b{position:absolute;top:-20px;left:0;right:0;text-align:center;font-size:11px;color:var(--txt-2);font-weight:600}
+.spec-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;margin-bottom:8px}
+.spec-row input{height:40px;border-radius:10px;border:1px solid var(--line);background:var(--bg-2);padding:0 11px;outline:none;font-size:13.5px;width:100%}
+.login-wrap{display:grid;place-items:center;min-height:100vh;padding:20px}
+@media(max-width:900px){
+  .adm{grid-template-columns:1fr}
+  .side{position:static;height:auto;display:flex;gap:6px;overflow-x:auto;padding:12px}
+  .side .logo,.side .sep{display:none}
+  .side a{white-space:nowrap;margin:0}
+  .side a .n{display:none}
+  .main{padding:18px 16px 50px}
+  .kpis{grid-template-columns:1fr 1fr}
+}
