@@ -37,7 +37,7 @@ fi
 say "Admin panel uchun parol yaratilmoqda"
 command -v htpasswd >/dev/null || apt-get install -y apache2-utils >/dev/null 2>&1
 HT="/etc/nginx/.htpasswd-mydrone"
-if [ -f "$HT" ]; then
+if [ -f "$HT" ] && [ -z "${ADMIN_PASS:-}" ]; then
   echo "  $HT allaqachon mavjud — o'zgartirilmadi"
   echo "  parolni yangilash uchun: htpasswd $HT $ADMIN_USER"
 else

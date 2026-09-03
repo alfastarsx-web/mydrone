@@ -67,22 +67,19 @@ fi
 echo "  konfig: $CONF"
 echo "  papka:  $DIR"
 
-say "Nginx sozlanmoqda (gzip, try_files, kesh)"
-# admin.html serverga chiqarilmaydi — parol ekranga (va CI logiga) chiqmasin
+say "Nginx sozlanmoqda (gzip, try_files, kesh, admin paroli)"
+# ADMIN_PASS tashqaridan berilmasa — tasodifiy parol (admin panel ochilmaydi)
 ADMIN_PASS="${ADMIN_PASS:-$(openssl rand -hex 16)}"
 export ADMIN_PASS
 NGINX_CONF="$CONF" SITE_ROOT="$DIR" bash "$SRC/deploy/setup-server.sh"
 
 say "Fayllar ko'chirilmoqda"
 cd "$SRC"
+# Admin panel ham chiqariladi — u nginx darajasidagi parol bilan himoyalangan
 tar --exclude='./.git' --exclude='./.github' --exclude='./.claude' \
     --exclude='./deploy' --exclude='./README.md' --exclude='./.gitignore' \
-    --exclude='./admin.html' --exclude='./assets/js/admin.js' \
-    --exclude='./assets/css/admin.css' \
     -cf - . | tar -xf - -C "$DIR"
 
-# ilgari yuklangan admin fayllari qolgan bo'lsa — olib tashlanadi
-rm -f "$DIR/admin.html" "$DIR/assets/js/admin.js" "$DIR/assets/css/admin.css"
 chown -R www-data:www-data "$DIR" 2>/dev/null || true
 
 echo "  ko'chirildi: $(find "$DIR" -type f | wc -l) ta fayl"
