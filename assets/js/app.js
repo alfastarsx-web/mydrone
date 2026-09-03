@@ -321,7 +321,9 @@
     const p = S.bySlug(slug);
     if (!p) return '<div class="wrap"><div class="empty">' + ic.empty + '<h3>' + t('nothing') + '</h3></div></div>';
     const c = S.category(p.cat), sub = c && c.subs.find(s => s.id === p.sub);
-    const revs = (S.db.reviews[p.id] || []).concat(SEED.demoReviews.slice(0, 2).map(r => ({ ...r, text: S.lang === 'ru' ? r.text_ru : r.text_uz })));
+    const revs = S.online
+      ? (p.reviewList || [])
+      : (S.db.reviews[p.id] || []).concat(SEED.demoReviews.slice(0, 2).map(r => ({ ...r, text: S.lang === 'ru' ? r.text_ru : r.text_uz })));
     const inCart = S.cart.find(r => r.id === p.id);
     const similar = S.db.products.filter(x => x.cat === p.cat && x.id !== p.id).slice(0, 4);
 
@@ -502,7 +504,7 @@
     '<input name="' + name + '" type="' + type + '" value="' + esc(val) + '"><div class="err">' + t('reqField') + '</div></div>';
 
   function viewOrderOk(id) {
-    const o = S.db.orders.find(x => x.id === id);
+    const o = lastOrder && lastOrder.id === id ? lastOrder : S.db.orders.find(x => x.id === id);
     return '<section><div class="wrap" style="max-width:640px;text-align:center;padding:40px 20px">' +
       '<div style="width:76px;height:76px;border-radius:50%;background:rgba(52,211,153,.14);color:var(--ok);display:grid;place-items:center;margin:0 auto 20px">' +
       ic.check.replace('width="17" height="17"', 'width="36" height="36"') + '</div>' +
@@ -534,7 +536,7 @@
 
     let body = '';
     if (tab === 'orders') {
-      const mine = S.db.orders.filter(o => o.userId === u.id);
+      const mine = accOrders;
       body = mine.length ? mine.map(orderCard).join('') :
         '<div class="empty">' + ic.box.replace('width="20" height="20"', 'width="46" height="46"') + '<h3>' + t('noOrders') + '</h3>' +
         '<a class="btn btn-p btn-sm" style="margin-top:14px" href="/katalog">' + t('toCatalog') + '</a></div>';
@@ -582,8 +584,10 @@
       '<span class="mut sm">' + o.created.slice(0, 10) + '</span>' +
       '<b style="margin-left:auto">' + money(o.total) + ' ' + t('currency') + '</b></div>' +
       '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">' + o.items.map(it => {
-        const p = S.product(it.id); if (!p) return '';
-        return '<a href="/mahsulot/' + p.slug + '" title="' + esc(L(p, 'name')) + '"><img src="' + IMG(p.imgs[0]) + '" style="width:58px;height:45px;object-fit:cover;border-radius:8px"></a>';
+        const p = S.product(it.id);
+        const slug = (p && p.slug) || it.slug, img = (p && p.imgs[0]) || it.img, nm = p ? L(p, 'name') : (it.name || '');
+        if (!img) return '';
+        return '<a href="/mahsulot/' + slug + '" title="' + esc(nm) + '"><img src="' + IMG(img) + '" style="width:58px;height:45px;object-fit:cover;border-radius:8px"></a>';
       }).join('') + '</div>' +
       (o.status === 'cancel' ? '' : '<div class="track">' + ST_ORDER.map((s, i) =>
         '<div class="' + (i <= idx ? 'done' : '') + '">' + t(ST_MAP[s][0]) + '</div>').join('') + '</div>') +
@@ -783,7 +787,10 @@
   }
 
   /* ---------- Router ---------- */
-  function route() {
+  let accOrders = [];          // kabinetdagi buyurtmalar (serverdan)
+  let lastOrder = null;        // "buyurtma qabul qilindi" sahifasi uchun
+
+  async function route() {
     const { parts, q } = parseRoute();
     if (q.ref) { sessionStorage.setItem('dm_ref_code', q.ref); }
     const main = $('#app');
@@ -792,6 +799,14 @@
     const STATIC = { 'yetkazib-berish': 'delivery', 'kafolat': 'warranty', 'biz-haqimizda': 'about',
       'aloqa': 'contact', 'savollar': 'faq', 'referal-dastur': 'referral' };
     const ACC = { 'buyurtmalar': 'orders', 'referal': 'ref', 'saqlanganlar': 'favs', 'profil': 'profile' };
+
+    /* Serverdan qo'shimcha ma'lumot kerak bo'lgan sahifalar */
+    if (p0 === 'mahsulot' && parts[1]) { await S.ensureProduct(parts[1]); }
+    if (p0 === 'buyurtma' && parts[1]) { lastOrder = await S.orderById(parts[1]); }
+    if (p0 === 'kabinet' && S.user && (ACC[parts[1]] || 'orders') === 'orders') {
+      try { accOrders = await S.myOrders(); } catch (e) { accOrders = []; }
+    }
+
     let html = '';
     if (!p0) html = viewHome();
     else if (p0 === 'katalog') html = viewCatalog(q);
@@ -870,42 +885,47 @@
       $('#fup').classList.toggle('hidden', b.dataset.auth !== 'up');
     }));
     const fin = $('#fin');
-    if (fin) fin.addEventListener('submit', e => {
+    if (fin) fin.addEventListener('submit', async e => {
       e.preventDefault();
+      const btn = $('button[type=submit]', fin); btn.disabled = true;
       const d = Object.fromEntries(new FormData(fin));
-      const u = S.login(d.email, d.pass);
+      const u = await S.login(d.email, d.pass);
+      btn.disabled = false;
       if (!u) { toast(t('badLogin'), 'err'); return; }
       toast(t('welcome') + ', ' + esc(u.name) + '!', 'ok'); go('/kabinet/buyurtmalar');
     });
     const fup = $('#fup');
-    if (fup) fup.addEventListener('submit', e => {
+    if (fup) fup.addEventListener('submit', async e => {
       e.preventDefault();
       const d = Object.fromEntries(new FormData(fup));
       if (!d.name || !d.email || !d.pass) { toast(t('reqField'), 'err'); return; }
-      const r = S.register(d.name, d.email, d.pass, d.phone, d.ref);
-      if (r.err) { toast(t('exists'), 'err'); return; }
+      const btn = $('button[type=submit]', fup); btn.disabled = true;
+      const r = await S.register(d.name, d.email, d.pass, d.phone, d.ref);
+      btn.disabled = false;
+      if (r.err) { toast(r.err === 'exists' ? t('exists') : r.err, 'err'); return; }
       if (d.ref) toast(t('refApplied'), 'ok');
       toast(t('welcome') + ', ' + esc(r.user.name) + '!', 'ok'); go('/kabinet/referal');
     });
 
     /* profil */
     const pf = $('#pform');
-    if (pf) pf.addEventListener('submit', e => {
+    if (pf) pf.addEventListener('submit', async e => {
       e.preventDefault();
       const d = Object.fromEntries(new FormData(pf));
-      const u = S.db.users.find(x => x.id === S.user.id);
-      Object.assign(u, { name: d.name, phone: d.phone, email: d.email });
-      S.save(); S.refreshUser(); toast(t('saved'), 'ok'); route();
+      try {
+        await S.updateProfile({ name: d.name, phone: d.phone, email: d.email });
+        toast(t('saved'), 'ok'); route();
+      } catch (err) { toast(err.message, 'err'); }
     });
 
     /* aloqa formasi */
     const fc = $('#fcontact');
-    if (fc) fc.addEventListener('submit', e => {
+    if (fc) fc.addEventListener('submit', async e => {
       e.preventDefault();
       const d = Object.fromEntries(new FormData(fc));
       if (!d.name || !d.phone) { toast(t('reqField'), 'err'); return; }
-      S.db.leads.push({ ...d, type: 'contact', at: new Date().toISOString() }); S.save();
-      fc.reset(); toast(t('sent'), 'ok');
+      try { await S.sendLead({ ...d, type: 'contact' }); fc.reset(); toast(t('sent'), 'ok'); }
+      catch (err) { toast(err.message, 'err'); }
     });
 
     /* bonus checkbox */
@@ -921,7 +941,7 @@
   }
 
   /* ---------- Buyurtmani yuborish ---------- */
-  function submitOrder(form) {
+  async function submitOrder(form) {
     const d = Object.fromEntries(new FormData(form));
     let ok = true;
     $$('.field', form).forEach(f => f.classList.remove('bad'));
@@ -936,12 +956,21 @@
     if (!ok) { toast(t('reqField'), 'err'); const b = $('.field.bad', form); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
 
     const tot = calcTotals(d.dlv, promoApplied, bonusApplied);
-    const order = S.placeOrder({
-      name: d.name, phone: d.phone, email: d.email || '', region: d.dlv === 'pickup' ? (S.lang === 'ru' ? 'Самовывоз' : "O'zi olib ketish") : d.region,
-      city: d.city || '', addr: d.addr || '', note: d.note || '', pay: d.pay, dlv: d.dlv,
-      goods: tot.goods, delivery: tot.delivery, discount: tot.discount, bonusUsed: tot.bonusUsed, total: tot.total,
-      promo: promoApplied ? promoApplied.code : ''
-    });
+    const btn = $('button[type=submit]', form);
+    if (btn) { btn.disabled = true; btn.textContent = '...'; }
+    let order;
+    try {
+      order = await S.placeOrder({
+        name: d.name, phone: d.phone, email: d.email || '', region: d.dlv === 'pickup' ? (S.lang === 'ru' ? 'Самовывоз' : "O'zi olib ketish") : d.region,
+        city: d.city || '', addr: d.addr || '', note: d.note || '', pay: d.pay, dlv: d.dlv,
+        goods: tot.goods, delivery: tot.delivery, discount: tot.discount, bonusUsed: tot.bonusUsed, total: tot.total,
+        promo: promoApplied ? promoApplied.code : ''
+      });
+    } catch (err) {
+      if (btn) { btn.disabled = false; btn.textContent = t('confirmOrder'); }
+      toast(err.message, 'err');
+      return;
+    }
     promoApplied = null; bonusApplied = 0;
     toast((S.lang === 'ru' ? 'SMS с подтверждением отправлен на ' : 'Tasdiqlash SMS yuborildi: ') + esc(d.phone), 'ok');
     go('/buyurtma/' + order.id);
@@ -977,10 +1006,11 @@
     else if (act === 'fprice') { setQ({ min: $('#fmin').value, max: $('#fmax').value }); }
     else if (act === 'promo') {
       const code = String($('#promo').value || '').trim().toUpperCase();
-      const p = S.db.promos.find(x => x.code === code && x.active);
       if (!code) return;
-      if (!p) { promoApplied = null; toast(t('promoBad'), 'err'); return; }
-      promoApplied = p; toast(t('promoOk') + ': ' + esc(L(p, 'note')), 'ok'); route();
+      S.checkPromo(code).then(p => {
+        if (!p) { promoApplied = null; toast(t('promoBad'), 'err'); return; }
+        promoApplied = p; toast(t('promoOk') + ': ' + esc(L(p, 'note')), 'ok'); route();
+      });
     }
     else if (act === 'copyref') {
       const i = $('#reflink'); i.select();
@@ -991,7 +1021,9 @@
       if (navigator.share) { navigator.share({ url }).catch(() => {}); }
       else if (navigator.clipboard) { navigator.clipboard.writeText(url).then(() => toast(t('linkCopied'), 'ok')); }
     }
-    else if (act === 'logout') { S.logout(); toast(S.lang === 'ru' ? 'Вы вышли' : 'Tizimdan chiqdingiz'); go('/'); route(); }
+    else if (act === 'logout') {
+      S.logout().then(() => { toast(S.lang === 'ru' ? 'Вы вышли' : 'Tizimdan chiqdingiz'); go('/'); });
+    }
     else if (act === 'close-modal') closeModal();
     else if (act === 'callback') openCallback();
     else if (act === 'addrev') openReview(id);
@@ -1004,12 +1036,12 @@
       fld('name', t('name'), S.user ? S.user.name : '', 'text', true) +
       fld('phone', t('phone'), S.user ? S.user.phone : '+998 ', 'tel', true) +
       '<button class="btn btn-p btn-block" type="submit">' + t('send') + '</button></form>',
-      m => $('#fcb', m).addEventListener('submit', e => {
+      m => $('#fcb', m).addEventListener('submit', async e => {
         e.preventDefault();
         const d = Object.fromEntries(new FormData(e.target));
         if (!d.name || d.phone.replace(/\D/g, '').length < 12) { toast(t('badPhone'), 'err'); return; }
-        S.db.leads.push({ ...d, type: 'callback', at: new Date().toISOString() }); S.save();
-        closeModal(); toast(t('sent'), 'ok');
+        try { await S.sendLead({ ...d, type: 'callback' }); closeModal(); toast(t('sent'), 'ok'); }
+        catch (err) { toast(err.message, 'err'); }
       }));
   }
 
@@ -1020,13 +1052,17 @@
       '<select name="rate">' + [5, 4, 3, 2, 1].map(n => '<option value="' + n + '">' + '★'.repeat(n) + '</option>').join('') + '</select></div>' +
       '<div class="field"><label>' + (S.lang === 'ru' ? 'Текст отзыва' : 'Sharh matni') + '</label><textarea name="text" required></textarea></div>' +
       '<button class="btn btn-p btn-block" type="submit">' + t('send') + '</button></form>',
-      m => $('#frev', m).addEventListener('submit', e => {
+      m => $('#frev', m).addEventListener('submit', async e => {
         e.preventDefault();
         const d = Object.fromEntries(new FormData(e.target));
-        (S.db.reviews[pid] = S.db.reviews[pid] || []).unshift({
-          name: S.user.name, rate: +d.rate, date: new Date().toISOString().slice(0, 10), text: d.text
-        });
-        S.save(); closeModal(); toast(t('sent'), 'ok'); route();
+        try {
+          const r = await S.addReview(pid, { name: S.user.name, rate: +d.rate, text: d.text });
+          closeModal();
+          toast(r.pending
+            ? (S.lang === 'ru' ? 'Спасибо! Отзыв появится после проверки' : "Rahmat! Sharh tekshiruvdan so'ng chiqadi")
+            : t('sent'), 'ok');
+          route();
+        } catch (err) { toast(err.message, 'err'); }
       }));
   }
 
@@ -1075,6 +1111,10 @@
   /* ---------- Boot ---------- */
   document.documentElement.lang = S.lang;
   renderHeader(); renderFooter(); renderFloats();
-  window.addEventListener('hashchange', route);
-  route();
+
+  S.init().then(ok => {
+    if (!ok) console.info('Demo rejim: ma\'lumotlar brauzerda saqlanadi');
+    renderHeader(); renderFooter();
+    route();
+  });
 })();

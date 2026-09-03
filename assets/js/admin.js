@@ -8,6 +8,37 @@
   const root = $('#root');
   const AUTH = 'dm_admin_v1';
 
+  /* Sahifa uchun kerakli ma'lumot shu yerga yuklanadi:
+     onlayn rejimda API'dan, demo rejimda S.db dan */
+  const state = { products: [], orders: [], categories: [], users: [], promos: [], posts: [], leads: [], dash: null };
+
+  async function loadFor(page) {
+    if (!S.online) {
+      state.products = S.db.products; state.orders = S.db.orders;
+      state.categories = S.db.categories; state.users = S.db.users;
+      state.promos = S.db.promos; state.posts = S.db.posts; state.leads = S.db.leads;
+      state.dash = null;
+      return;
+    }
+    if (page === 'dash') {
+      const [dash, products] = await Promise.all([S.admin.dashboard(), S.admin.products()]);
+      state.dash = dash; state.products = products;
+      state.orders = dash.recent || [];
+    }
+    if (page === 'orders') state.orders = await S.admin.orders();
+    if (page === 'products' || page === 'cats') {
+      state.products = await S.admin.products();
+      state.categories = (await S.api('/categories', { noAuth: true })).map(c => ({
+        id: c.id, name_uz: c.nameUz, name_ru: c.nameRu, img: c.img, icon: c.icon,
+        subs: (c.subs || []).map(x => ({ id: x.id, name_uz: x.nameUz, name_ru: x.nameRu }))
+      }));
+    }
+    if (page === 'customers') state.users = await S.admin.users();
+    if (page === 'promos') state.promos = await S.admin.promos();
+    if (page === 'posts') state.posts = await S.admin.posts();
+    if (page === 'leads') state.leads = await S.admin.leads();
+  }
+
   const ST = { new: ['Kutilmoqda', 'st-new'], confirmed: ['Tasdiqlandi', 'st-cn'], shipped: ["Xitoydan jo'natildi", 'st-sh'],
     way: ["Yo'lda", 'st-wy'], done: ['Yetkazildi', 'st-dn'], cancel: ['Bekor qilingan', 'st-cx'] };
 
@@ -46,11 +77,21 @@
       '<div class="hint">Demo: <b>admin@mydrone.uz</b> / <b>admin12345</b></div></form>' +
       '<a class="btn btn-ghost btn-block btn-sm" style="margin-top:10px" href="/">← Saytga qaytish</a>' +
       '</div></div>';
-    $('#fl').addEventListener('submit', e => {
+    $('#fl').addEventListener('submit', async e => {
       e.preventDefault();
       const d = Object.fromEntries(new FormData(e.target));
-      const ok = S.db.admins.some(a => a.email.toLowerCase() === d.email.toLowerCase().trim() && a.pass === d.pass);
-      if (!ok) { toast('Email yoki parol noto\'g\'ri', 'err'); return; }
+      const btn = $('button[type=submit]', e.target); btn.disabled = true;
+
+      if (S.online) {
+        const u = await S.login(d.email.trim(), d.pass);
+        btn.disabled = false;
+        if (!u) { toast('Email yoki parol noto\'g\'ri', 'err'); return; }
+        if (u.role !== 'admin') { await S.logout(); toast('Bu hisob administrator emas', 'err'); return; }
+      } else {
+        btn.disabled = false;
+        const ok = S.db.admins.some(a => a.email.toLowerCase() === d.email.toLowerCase().trim() && a.pass === d.pass);
+        if (!ok) { toast('Email yoki parol noto\'g\'ri', 'err'); return; }
+      }
       sessionStorage.setItem(AUTH, '1'); render();
     });
   }
@@ -63,24 +104,45 @@
   ];
   let page = 'dash';
 
-  function render() {
+  async function render() {
     if (!isAuthed()) return loginScreen();
-    const counts = { orders: S.db.orders.length, products: S.db.products.length, cats: S.db.categories.length,
-      customers: S.db.users.length, promos: S.db.promos.length, posts: S.db.posts.length, leads: S.db.leads.length };
+    try {
+      await loadFor(page);
+    } catch (e) {
+      if (e.status === 401 || e.status === 403) { sessionStorage.removeItem(AUTH); return loginScreen(); }
+      toast('Ma\'lumot yuklanmadi: ' + e.message, 'err');
+    }
+    const counts = S.online
+      ? { orders: state.dash ? state.dash.orders : state.orders.length, products: state.products.length,
+          cats: state.categories.length, customers: state.users.length, promos: state.promos.length,
+          posts: state.posts.length, leads: state.leads.length }
+      : { orders: S.db.orders.length, products: S.db.products.length, cats: S.db.categories.length,
+          customers: S.db.users.length, promos: S.db.promos.length, posts: S.db.posts.length, leads: S.db.leads.length };
     root.innerHTML = '<div class="adm"><aside class="side">' +
       '<div class="logo"><span class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><circle cx="5" cy="5" r="2.6"/><circle cx="19" cy="5" r="2.6"/><circle cx="5" cy="19" r="2.6"/><circle cx="19" cy="19" r="2.6"/><rect x="8.5" y="8.5" width="7" height="7" rx="1.6"/></svg></span>My<b>Drone</b></div>' +
       PAGES.map(p => '<a data-p="' + p[0] + '" class="' + (page === p[0] ? 'on' : '') + '">' + p[1] +
-        (counts[p[0]] != null ? '<span class="n">' + counts[p[0]] + '</span>' : '') + '</a>').join('') +
+        (counts[p[0]] ? '<span class="n">' + counts[p[0]] + '</span>' : '') + '</a>').join('') +
       '<div class="sep"></div>' +
       '<a href="/" target="_blank">Saytni ochish ↗</a>' +
       '<a data-act="reset">Demo bazani tiklash</a>' +
       '<a data-act="theme">' + (S.effTheme() === 'dark' ? "☀ Yorug' rejim" : "☾ Qorong'i rejim") + '</a>' +
       '<a data-act="exit">Chiqish</a>' +
+      '<div class="sep"></div>' +
+      '<div style="padding:8px 12px;font-size:12px" class="mut">' +
+        (S.online
+          ? '<span style="color:var(--ok)">\u25CF</span> Bazaga ulangan'
+          : '<span style="color:var(--warn)">\u25CF</span> Demo rejim — o\'zgarishlar faqat shu brauzerda') +
+      '</div>' +
       '</aside><div class="main" id="pane"></div></div>';
     $$('[data-p]').forEach(a => a.addEventListener('click', () => { page = a.dataset.p; render(); }));
-    $('[data-act="exit"]').addEventListener('click', () => { sessionStorage.removeItem(AUTH); render(); });
+    $('[data-act="exit"]').addEventListener('click', async () => {
+      sessionStorage.removeItem(AUTH);
+      if (S.online) await S.logout();
+      render();
+    });
     $('[data-act="theme"]').addEventListener('click', () => { S.toggleTheme(); render(); });
     $('[data-act="reset"]').addEventListener('click', () => {
+      if (S.online) { toast('Bazaga ulanganda bu tugma ishlamaydi — ma\'lumot serverda', 'err'); return; }
       if (confirm('Barcha o\'zgarishlar o\'chib, demo baza qayta tiklanadi. Davom etamizmi?')) S.reset();
     });
     ({ dash: pgDash, orders: pgOrders, products: pgProducts, cats: pgCats, customers: pgCustomers,
@@ -91,30 +153,42 @@
 
   /* ---------- 1. Boshqaruv paneli ---------- */
   function pgDash() {
-    const O = S.db.orders, done = O.filter(o => o.status !== 'cancel');
-    const revenue = done.reduce((s, o) => s + o.total, 0);
-    const avg = done.length ? Math.round(revenue / done.length) : 0;
-    const newOrders = O.filter(o => o.status === 'new').length;
-    const low = S.db.products.filter(p => p.stock === 'in' && p.qty <= 5).sort((a, b) => a.qty - b.qty).slice(0, 6);
-    const top = S.db.products.slice().sort((a, b) => b.sold - a.sold).slice(0, 6);
-    const maxSold = top[0] ? top[0].sold : 1;
+    const D = state.dash;
+    const O = D ? (D.recent || []) : S.db.orders;
+    const done = D ? null : O.filter(o => o.status !== 'cancel');
+    const revenue = D ? D.revenue : done.reduce((s, o) => s + o.total, 0);
+    const avg = D ? D.avgCheck : (done.length ? Math.round(revenue / done.length) : 0);
+    const ordersTotal = D ? D.orders : O.length;
+    const newOrders = D ? D.newOrders : O.filter(o => o.status === 'new').length;
+    const customers = D ? D.customers : S.db.users.length;
+    const leadCount = D ? D.leads : S.db.leads.length;
+
+    const low = D ? D.lowStock.map(x => ({ name_uz: x.name, qty: x.qty }))
+      : S.db.products.filter(p => p.stock === 'in' && p.qty <= 5).sort((a, b) => a.qty - b.qty).slice(0, 6);
+    const top = D ? D.top.map(x => ({ name_uz: x.name, sold: x.sold }))
+      : S.db.products.slice().sort((a, b) => b.sold - a.sold).slice(0, 6);
+    const maxSold = top[0] ? top[0].sold || 1 : 1;
 
     /* oxirgi 7 kun bo'yicha buyurtmalar */
-    const days = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(); d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      const cnt = O.filter(o => (o.created || '').slice(0, 10) === key).length;
-      days.push([key.slice(5), cnt]);
-    }
+    const days = D
+      ? D.days.map(d => [d.day.slice(5), d.count])
+      : (() => {
+          const out = [];
+          for (let i = 6; i >= 0; i--) {
+            const d = new Date(); d.setDate(d.getDate() - i);
+            const key = d.toISOString().slice(0, 10);
+            out.push([key.slice(5), O.filter(o => (o.created || '').slice(0, 10) === key).length]);
+          }
+          return out;
+        })();
     const maxDay = Math.max(1, ...days.map(d => d[1]));
 
     pane(hd('Boshqaruv paneli', '<span class="mut sm">' + new Date().toLocaleDateString('ru-RU') + '</span>') +
       '<div class="kpis">' +
-      [['Buyurtmalar', O.length, newOrders + ' ta yangi'],
+      [['Buyurtmalar', ordersTotal, newOrders + ' ta yangi'],
        ['Tushum', money(revenue), 'so\'m'],
        ['O\'rtacha chek', money(avg), 'so\'m'],
-       ['Mijozlar', S.db.users.length, S.db.leads.length + ' ta murojaat']]
+       ['Mijozlar', customers, leadCount + ' ta murojaat']]
         .map(k => '<div class="kpi"><b>' + k[1] + '</b><span>' + k[0] + ' · ' + k[2] + '</span></div>').join('') +
       '</div>' +
       '<div class="grid g-2" style="align-items:start">' +
@@ -142,7 +216,7 @@
   /* ---------- 2. Buyurtmalar ---------- */
   let ordFilter = '';
   function pgOrders() {
-    const list = S.db.orders.filter(o => !ordFilter || o.status === ordFilter);
+    const list = state.orders.filter(o => !ordFilter || o.status === ordFilter);
     pane(hd('Buyurtmalar') +
       '<div class="tbl-wrap"><div class="tbl-top">' +
       '<select id="ofil"><option value="">Barcha holatlar</option>' +
@@ -162,15 +236,18 @@
       '</table></div></div>');
     $('#ofil').addEventListener('change', e => { ordFilter = e.target.value; pgOrders(); });
     $$('[data-view]').forEach(b => b.addEventListener('click', () => viewOrder(b.dataset.view)));
-    $$('[data-delo]').forEach(b => b.addEventListener('click', () => {
+    $$('[data-delo]').forEach(b => b.addEventListener('click', async () => {
       if (!confirm('Buyurtma o\'chirilsinmi?')) return;
-      S.db.orders = S.db.orders.filter(o => o.id !== b.dataset.delo);
-      Object.assign(S.db, { orders: S.db.orders }); S.save(); toast('O\'chirildi', 'ok'); render();
+      try {
+        if (S.online) await S.admin.deleteOrder(b.dataset.delo);
+        else { S.db.orders = S.db.orders.filter(o => o.id !== b.dataset.delo); S.save(); }
+        toast('O\'chirildi', 'ok'); render();
+      } catch (e) { toast(e.message, 'err'); }
     }));
   }
 
   function viewOrder(id) {
-    const o = S.db.orders.find(x => x.id === id);
+    const o = state.orders.find(x => x.id === id);
     if (!o) return;
     modal('Buyurtma ' + o.id,
       '<div class="grid g-2" style="gap:12px">' +
@@ -181,9 +258,10 @@
       '</div>' + (o.note ? '<div class="hint" style="margin-top:10px">Izoh: ' + esc(o.note) + '</div>' : '') +
       '<div style="margin:16px 0 8px"><b>Mahsulotlar</b></div>' +
       o.items.map(it => { const p = S.product(it.id);
+        const img = (p && p.imgs[0]) || it.img, nm = (p && p.name_uz) || it.name || it.id;
         return '<div style="display:flex;gap:11px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line-soft)">' +
-          (p ? '<img src="' + IMG(p.imgs[0]) + '" style="width:44px;height:34px;object-fit:cover;border-radius:7px">' : '') +
-          '<div style="flex:1" class="sm">' + esc(p ? p.name_uz : it.id) + '</div>' +
+          (img ? '<img src="' + IMG(img) + '" style="width:44px;height:34px;object-fit:cover;border-radius:7px">' : '') +
+          '<div style="flex:1" class="sm">' + esc(nm) + '</div>' +
           '<div class="sm mut">' + it.qty + ' × ' + money(it.price) + '</div></div>'; }).join('') +
       '<div class="sum-row" style="margin-top:10px"><span class="mut">Mahsulotlar</span><span>' + money(o.goods) + '</span></div>' +
       (o.discount ? '<div class="sum-row"><span class="mut">Chegirma</span><span>−' + money(o.discount) + '</span></div>' : '') +
@@ -193,29 +271,35 @@
       '<div class="field" style="margin-top:16px"><label>Holatni o\'zgartirish</label><select id="ost">' +
       Object.keys(ST).map(k => '<option value="' + k + '"' + (o.status === k ? ' selected' : '') + '>' + ST[k][0] + '</option>').join('') +
       '</select></div><button class="btn btn-p btn-block" id="osave">Saqlash</button>', true,
-      m => $('#osave', m).addEventListener('click', () => {
-        o.status = $('#ost', m).value; S.save(); closeModal();
-        toast('Holat yangilandi · mijozga bildirishnoma yuborildi', 'ok'); pgOrders();
+      m => $('#osave', m).addEventListener('click', async () => {
+        const status = $('#ost', m).value;
+        try {
+          if (S.online) await S.admin.setOrderStatus(o.id, status);
+          else { o.status = status; S.save(); }
+          closeModal();
+          toast('Holat yangilandi' + (status === 'done' ? ' · referal bonus hisoblandi' : ''), 'ok');
+          render();
+        } catch (e) { toast(e.message, 'err'); }
       }));
   }
 
   /* ---------- 3. Mahsulotlar ---------- */
   let pq = '', pcat = '';
   function pgProducts() {
-    let list = S.db.products;
+    let list = state.products;
     if (pcat) list = list.filter(p => p.cat === pcat);
     if (pq) list = list.filter(p => (p.name_uz + p.name_ru + p.brand).toLowerCase().includes(pq.toLowerCase()));
     pane(hd('Mahsulotlar', '<button class="btn btn-p btn-sm" id="padd">+ Yangi mahsulot</button>') +
       '<div class="tbl-wrap"><div class="tbl-top">' +
       '<input id="psearch" placeholder="Qidirish..." value="' + esc(pq) + '" style="min-width:200px">' +
       '<select id="pcat"><option value="">Barcha kategoriyalar</option>' +
-      S.db.categories.map(c => '<option value="' + c.id + '"' + (pcat === c.id ? ' selected' : '') + '>' + esc(c.name_uz) + '</option>').join('') + '</select>' +
+      state.categories.map(c => '<option value="' + c.id + '"' + (pcat === c.id ? ' selected' : '') + '>' + esc(c.name_uz) + '</option>').join('') + '</select>' +
       '<span class="mut sm">' + list.length + ' ta</span></div>' +
       '<div class="tbl-scroll"><table class="dt">' +
       '<tr><th></th><th>Nomi</th><th>Kategoriya</th><th>Brend</th><th>Narx</th><th>Zaxira</th><th>Sotilgan</th><th></th></tr>' +
       list.map(p => '<tr><td><img class="th" src="' + IMG(p.imgs[0]) + '"></td>' +
         '<td><b>' + esc(p.name_uz) + '</b><div class="mut xs">' + esc(p.slug) + '</div></td>' +
-        '<td class="sm">' + esc((S.category(p.cat) || {}).name_uz || '') + '</td>' +
+        '<td class="sm">' + esc((state.categories.find(c => c.id === p.cat) || {}).name_uz || '') + '</td>' +
         '<td class="sm">' + esc(p.brand) + '</td>' +
         '<td><b>' + money(p.price) + '</b>' + (p.old > p.price ? '<div class="mut xs" style="text-decoration:line-through">' + money(p.old) + '</div>' : '') + '</td>' +
         '<td>' + (p.stock === 'in' ? '<span class="st st-dn">' + p.qty + ' dona</span>' :
@@ -228,18 +312,23 @@
     $('#pcat').addEventListener('change', e => { pcat = e.target.value; pgProducts(); });
     $('#padd').addEventListener('click', () => editProduct(null));
     $$('[data-ep]').forEach(b => b.addEventListener('click', () => editProduct(b.dataset.ep)));
-    $$('[data-dp]').forEach(b => b.addEventListener('click', () => {
+    $$('[data-dp]').forEach(b => b.addEventListener('click', async () => {
       if (!confirm('Mahsulot o\'chirilsinmi?')) return;
-      S.db.products = S.db.products.filter(p => p.id !== b.dataset.dp); S.save(); toast('O\'chirildi', 'ok'); render();
+      try {
+        if (S.online) await S.admin.deleteProduct(b.dataset.dp);
+        else { S.db.products = S.db.products.filter(p => p.id !== b.dataset.dp); S.save(); }
+        toast('O\'chirildi', 'ok'); render();
+      } catch (e) { toast(e.message, 'err'); }
     }));
   }
 
   function editProduct(id) {
-    const p = id ? S.product(id) : { id: '', slug: '', cat: S.db.categories[0].id, sub: S.db.categories[0].subs[0].id,
+    const p = id ? state.products.find(x => x.id === id) : { id: '', slug: '', cat: S.db.categories[0].id, sub: S.db.categories[0].subs[0].id,
       brand: '', name_uz: '', name_ru: '', price: 0, old: 0, stock: 'in', qty: 1, lead: 0, rating: 5, reviews: 0,
       sold: 0, isNew: true, isHit: false, imgs: ['drone-air-1.jpg'], short_uz: '', short_ru: '', specs: [] };
-    const catOpts = S.db.categories.map(c => [c.id, c.name_uz]);
-    const subOpts = (S.category(p.cat) || S.db.categories[0]).subs.map(s => [s.id, s.name_uz]);
+    const cats = state.categories.length ? state.categories : S.db.categories;
+    const catOpts = cats.map(c => [c.id, c.name_uz]);
+    const subOpts = (cats.find(c => c.id === p.cat) || cats[0]).subs.map(s => [s.id, s.name_uz]);
     modal(id ? 'Mahsulotni tahrirlash' : 'Yangi mahsulot',
       '<form id="pf">' +
       '<div class="grid g-2">' + fld('name_uz', 'Nomi (uz)', p.name_uz) + fld('name_ru', 'Nomi (ru)', p.name_ru) + '</div>' +
@@ -259,12 +348,12 @@
       '<button class="btn btn-p btn-block" type="submit">Saqlash</button></form>', true,
       m => {
         $('[name="cat"]', m).addEventListener('change', e => {
-          const c = S.category(e.target.value);
+          const c = cats.find(x => x.id === e.target.value) || cats[0];
           $('[name="sub"]', m).innerHTML = c.subs.map(s => '<option value="' + s.id + '">' + esc(s.name_uz) + '</option>').join('');
         });
         $('#addspec', m).addEventListener('click', () => $('#specs', m).insertAdjacentHTML('beforeend', specRow(['', '', ''])));
         $('#specs', m).addEventListener('click', e => { if (e.target.closest('[data-rmspec]')) e.target.closest('.spec-row').remove(); });
-        $('#pf', m).addEventListener('submit', e => {
+        $('#pf', m).addEventListener('submit', async e => {
           e.preventDefault();
           const d = Object.fromEntries(new FormData(e.target));
           const specs = $$('.spec-row', m).map(r => $$('input', r).map(i => i.value)).filter(x => x[0] && x[2]);
@@ -279,9 +368,12 @@
           };
           if (!obj.name_uz || !obj.price) { toast('Nomi va narxi to\'ldirilishi shart', 'err'); return; }
           if (!obj.imgs.length) obj.imgs = ['drone-air-1.jpg'];
-          if (id) { Object.assign(S.product(id), obj); }
-          else { obj.id = 'p_' + Date.now().toString(36); S.db.products.unshift(obj); }
-          S.save(); closeModal(); toast('Saqlandi', 'ok'); render();
+          try {
+            if (S.online) { await S.admin.saveProduct({ ...obj, id }); await S.reloadProducts(); }
+            else if (id) { Object.assign(state.products.find(x => x.id === id), obj); S.save(); }
+            else { obj.id = 'p_' + Date.now().toString(36); S.db.products.unshift(obj); S.save(); }
+            closeModal(); toast('Saqlandi', 'ok'); render();
+          } catch (err) { toast(err.message, 'err'); }
         });
       });
   }
@@ -293,64 +385,82 @@
   function pgCats() {
     pane(hd('Kategoriyalar', '<button class="btn btn-p btn-sm" id="cadd">+ Yangi kategoriya</button>') +
       '<p class="mut sm" style="margin:-12px 0 18px">Yangi kategoriya qo\'shsangiz, u avtomatik ravishda saytdagi menyuda va katalogda paydo bo\'ladi — dasturchi aralashuvi shart emas.</p>' +
-      S.db.categories.map(c => '<div class="tbl-wrap" style="margin-bottom:14px"><div class="tbl-top">' +
+      state.categories.map(c => '<div class="tbl-wrap" style="margin-bottom:14px"><div class="tbl-top">' +
         '<img class="th" src="' + IMG(c.img) + '" style="width:46px;height:36px;object-fit:cover;border-radius:8px">' +
         '<b>' + esc(c.name_uz) + '</b><span class="mut sm">' + esc(c.name_ru) + '</span>' +
-        '<span class="mut sm">· ' + S.db.products.filter(p => p.cat === c.id).length + ' ta mahsulot</span>' +
+        '<span class="mut sm">· ' + state.products.filter(p => p.cat === c.id).length + ' ta mahsulot</span>' +
         '<span style="flex:1"></span>' +
         '<button class="btn btn-ghost btn-sm" data-ec="' + c.id + '">Tahrirlash</button>' +
         '<button class="btn btn-ghost btn-sm" data-as="' + c.id + '">+ Subkategoriya</button>' +
         '<button class="ib del" data-dc="' + c.id + '">✕</button></div>' +
         '<div class="tbl-scroll"><table class="dt" style="min-width:0"><tr><th>Subkategoriya</th><th>Ru</th><th>Mahsulot</th><th></th></tr>' +
         c.subs.map(s => '<tr><td>' + esc(s.name_uz) + '</td><td class="mut sm">' + esc(s.name_ru) + '</td>' +
-          '<td>' + S.db.products.filter(p => p.sub === s.id).length + '</td>' +
+          '<td>' + state.products.filter(p => p.sub === s.id).length + '</td>' +
           '<td><div class="acts"><button class="ib del" data-ds="' + c.id + '|' + s.id + '">✕</button></div></td></tr>').join('') +
         '</table></div></div>').join(''));
 
     $('#cadd').addEventListener('click', () => editCat(null));
     $$('[data-ec]').forEach(b => b.addEventListener('click', () => editCat(b.dataset.ec)));
     $$('[data-as]').forEach(b => b.addEventListener('click', () => {
-      const c = S.category(b.dataset.as);
+      const c = state.categories.find(x => x.id === b.dataset.as);
       modal('Yangi subkategoriya', '<form id="sf">' + fld('name_uz', 'Nomi (uz)', '') + fld('name_ru', 'Nomi (ru)', '') +
         '<button class="btn btn-p btn-block" type="submit">Qo\'shish</button></form>', false,
-        m => $('#sf', m).addEventListener('submit', e => {
+        m => $('#sf', m).addEventListener('submit', async e => {
           e.preventDefault();
           const d = Object.fromEntries(new FormData(e.target));
           if (!d.name_uz) return;
-          c.subs.push({ id: slugify(d.name_uz) + '-' + Math.floor(Math.random() * 900 + 100), name_uz: d.name_uz, name_ru: d.name_ru || d.name_uz });
-          S.save(); closeModal(); toast('Qo\'shildi', 'ok'); render();
+          const sub = { id: slugify(d.name_uz) + '-' + Math.floor(Math.random() * 900 + 100),
+            name_uz: d.name_uz, name_ru: d.name_ru || d.name_uz };
+          try {
+            if (S.online) await S.admin.saveSub(c.id, sub); else { c.subs.push(sub); S.save(); }
+            closeModal(); toast('Qo\'shildi', 'ok'); render();
+          } catch (err) { toast(err.message, 'err'); }
         }));
     }));
-    $$('[data-dc]').forEach(b => b.addEventListener('click', () => {
-      const n = S.db.products.filter(p => p.cat === b.dataset.dc).length;
+    $$('[data-dc]').forEach(b => b.addEventListener('click', async () => {
+      const n = state.products.filter(p => p.cat === b.dataset.dc).length;
       if (n) { toast('Avval ' + n + ' ta mahsulotni boshqa kategoriyaga o\'tkazing', 'err'); return; }
       if (!confirm('Kategoriya o\'chirilsinmi?')) return;
-      S.db.categories = S.db.categories.filter(c => c.id !== b.dataset.dc); S.save(); toast('O\'chirildi', 'ok'); render();
+      try {
+        if (S.online) await S.admin.deleteCategory(b.dataset.dc);
+        else { S.db.categories = S.db.categories.filter(c => c.id !== b.dataset.dc); S.save(); }
+        toast('O\'chirildi', 'ok'); render();
+      } catch (e) { toast(e.message, 'err'); }
     }));
-    $$('[data-ds]').forEach(b => b.addEventListener('click', () => {
+    $$('[data-ds]').forEach(b => b.addEventListener('click', async () => {
       const [cid, sid] = b.dataset.ds.split('|');
-      const c = S.category(cid);
-      c.subs = c.subs.filter(s => s.id !== sid); S.save(); toast('O\'chirildi', 'ok'); render();
+      try {
+        if (S.online) await S.admin.deleteSub(sid);
+        else { const c = state.categories.find(x => x.id === cid); c.subs = c.subs.filter(s => s.id !== sid); S.save(); }
+        toast('O\'chirildi', 'ok'); render();
+      } catch (e) { toast(e.message, 'err'); }
     }));
   }
   const slugify = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'cat';
 
   function editCat(id) {
-    const c = id ? S.category(id) : { id: '', name_uz: '', name_ru: '', img: 'drone-air-1.jpg', icon: 'box', subs: [] };
+    const c = id ? state.categories.find(x => x.id === id) : { id: '', name_uz: '', name_ru: '', img: 'drone-air-1.jpg', icon: 'box', subs: [] };
     modal(id ? 'Kategoriyani tahrirlash' : 'Yangi kategoriya',
       '<form id="cf">' + fld('name_uz', 'Nomi (uz)', c.name_uz) + fld('name_ru', 'Nomi (ru)', c.name_ru) +
       fld('img', 'Rasm fayli (assets/img/ ichida)', c.img) +
       '<button class="btn btn-p btn-block" type="submit">Saqlash</button></form>', false,
-      m => $('#cf', m).addEventListener('submit', e => {
+      m => $('#cf', m).addEventListener('submit', async e => {
         e.preventDefault();
         const d = Object.fromEntries(new FormData(e.target));
         if (!d.name_uz) return;
-        if (id) { Object.assign(c, { name_uz: d.name_uz, name_ru: d.name_ru || d.name_uz, img: d.img }); }
-        else {
-          S.db.categories.push({ id: slugify(d.name_uz), name_uz: d.name_uz, name_ru: d.name_ru || d.name_uz,
-            img: d.img || 'drone-air-1.jpg', icon: 'box', subs: [{ id: slugify(d.name_uz) + '-all', name_uz: 'Barchasi', name_ru: 'Все' }] });
-        }
-        S.save(); closeModal(); toast('Saqlandi', 'ok'); render();
+        const obj = { id: id || slugify(d.name_uz), name_uz: d.name_uz,
+          name_ru: d.name_ru || d.name_uz, img: d.img || 'drone-air-1.jpg', icon: 'box' };
+        try {
+          if (S.online) {
+            await S.admin.saveCategory(obj);
+            if (!id) await S.admin.saveSub(obj.id, { id: obj.id + '-all', name_uz: 'Barchasi', name_ru: 'Все' });
+          } else if (id) {
+            Object.assign(c, obj);
+          } else {
+            S.db.categories.push({ ...obj, subs: [{ id: obj.id + '-all', name_uz: 'Barchasi', name_ru: 'Все' }] });
+          }
+          S.save(); closeModal(); toast('Saqlandi', 'ok'); render();
+        } catch (err) { toast(err.message, 'err'); }
       }));
   }
 
@@ -358,11 +468,10 @@
   function pgCustomers() {
     pane(hd('Mijozlar') +
       '<div class="tbl-wrap"><div class="tbl-scroll"><table class="dt">' +
-      '<tr><th>Ism</th><th>Email</th><th>Telefon</th><th>Referal kod</th><th>Taklif qilgan</th><th>Bonus</th><th>Buyurtma</th><th>Ro\'yxatdan</th></tr>' +
-      S.db.users.map(u => '<tr><td><b>' + esc(u.name) + '</b></td><td class="mut sm">' + esc(u.email) + '</td>' +
+      '<tr><th>Ism</th><th>Email</th><th>Telefon</th><th>Referal kod</th><th>Taklif qilgan</th><th>Bonus</th><th>Ro\'yxatdan</th></tr>' +
+      state.users.map(u => '<tr><td><b>' + esc(u.name) + '</b></td><td class="mut sm">' + esc(u.email) + '</td>' +
         '<td class="mut sm">' + esc(u.phone || '—') + '</td><td><code style="color:var(--acc)">' + esc(u.ref) + '</code></td>' +
         '<td>' + (u.invited || 0) + '</td><td>' + money(u.bonus || 0) + '</td>' +
-        '<td>' + S.db.orders.filter(o => o.userId === u.id).length + '</td>' +
         '<td class="mut sm">' + esc(u.created || '') + '</td></tr>').join('') +
       '</table></div></div>');
   }
@@ -372,7 +481,7 @@
     pane(hd('Promokodlar', '<button class="btn btn-p btn-sm" id="mkpromo">+ Yangi promokod</button>') +
       '<div class="tbl-wrap"><div class="tbl-scroll"><table class="dt">' +
       '<tr><th>Kod</th><th>Turi</th><th>Qiymat</th><th>Izoh</th><th>Holat</th><th></th></tr>' +
-      S.db.promos.map((p, i) => '<tr><td><b style="color:var(--acc)">' + esc(p.code) + '</b></td>' +
+      state.promos.map((p, i) => '<tr><td><b style="color:var(--acc)">' + esc(p.code) + '</b></td>' +
         '<td>' + (p.type === 'percent' ? 'Foiz' : 'Qat\'iy summa') + '</td>' +
         '<td>' + (p.type === 'percent' ? p.value + '%' : money(p.value) + ' so\'m') + '</td>' +
         '<td class="mut sm">' + esc(p.note_uz || '') + '</td>' +
@@ -384,16 +493,30 @@
         sel('type', 'Turi', 'percent', [['percent', 'Foiz (%)'], ['fixed', 'Qat\'iy summa (so\'m)']]) +
         fld('value', 'Qiymat', 10, 'number') + fld('note_uz', 'Izoh', '') +
         '<button class="btn btn-p btn-block" type="submit">Qo\'shish</button></form>', false,
-        m => $('#prf', m).addEventListener('submit', e => {
+        m => $('#prf', m).addEventListener('submit', async e => {
           e.preventDefault();
           const d = Object.fromEntries(new FormData(e.target));
           if (!d.code) return;
-          S.db.promos.push({ code: d.code.toUpperCase().trim(), type: d.type, value: +d.value, active: true, note_uz: d.note_uz, note_ru: d.note_uz });
-          S.save(); closeModal(); toast('Qo\'shildi', 'ok'); render();
+          const promo = { code: d.code.toUpperCase().trim(), type: d.type, value: +d.value,
+            active: true, note_uz: d.note_uz, note_ru: d.note_uz };
+          try {
+            if (S.online) await S.admin.savePromo(promo); else { S.db.promos.push(promo); S.save(); }
+            closeModal(); toast('Qo\'shildi', 'ok'); render();
+          } catch (err) { toast(err.message, 'err'); }
         }));
     });
-    $$('[data-tp]').forEach(b => b.addEventListener('click', () => { const p = S.db.promos[+b.dataset.tp]; p.active = !p.active; S.save(); pgPromos(); }));
-    $$('[data-dpr]').forEach(b => b.addEventListener('click', () => { S.db.promos.splice(+b.dataset.dpr, 1); S.save(); render(); }));
+    $$('[data-tp]').forEach(b => b.addEventListener('click', async () => {
+      const p = state.promos[+b.dataset.tp]; p.active = !p.active;
+      try { if (S.online) await S.admin.savePromo(p); else S.save(); render(); }
+      catch (e) { toast(e.message, 'err'); }
+    }));
+    $$('[data-dpr]').forEach(b => b.addEventListener('click', async () => {
+      const p = state.promos[+b.dataset.dpr];
+      try {
+        if (S.online) await S.admin.deletePromo(p.code); else { S.db.promos.splice(+b.dataset.dpr, 1); S.save(); }
+        render();
+      } catch (e) { toast(e.message, 'err'); }
+    }));
   }
 
   /* ---------- 7. Blog ---------- */
@@ -401,20 +524,24 @@
     pane(hd('Blog', '<button class="btn btn-p btn-sm" id="badd">+ Yangi maqola</button>') +
       '<div class="tbl-wrap"><div class="tbl-scroll"><table class="dt">' +
       '<tr><th></th><th>Sarlavha</th><th>Bo\'lim</th><th>Sana</th><th></th></tr>' +
-      S.db.posts.map(p => '<tr><td><img class="th" src="' + IMG(p.img) + '"></td>' +
+      state.posts.map(p => '<tr><td><img class="th" src="' + IMG(p.img) + '"></td>' +
         '<td><b>' + esc(p.title_uz) + '</b><div class="mut xs">' + esc(p.slug) + '</div></td>' +
         '<td class="sm">' + esc(p.cat_uz) + '</td><td class="mut sm">' + p.date + '</td>' +
         '<td><div class="acts"><button class="ib" data-eb="' + p.id + '">✎</button><button class="ib del" data-db="' + p.id + '">✕</button></div></td></tr>').join('') +
       '</table></div></div>');
     $('#badd').addEventListener('click', () => editPost(null));
     $$('[data-eb]').forEach(b => b.addEventListener('click', () => editPost(b.dataset.eb)));
-    $$('[data-db]').forEach(b => b.addEventListener('click', () => {
+    $$('[data-db]').forEach(b => b.addEventListener('click', async () => {
       if (!confirm('Maqola o\'chirilsinmi?')) return;
-      S.db.posts = S.db.posts.filter(p => p.id !== b.dataset.db); S.save(); render();
+      try {
+        if (S.online) await S.admin.deletePost(b.dataset.db);
+        else { S.db.posts = S.db.posts.filter(p => p.id !== b.dataset.db); S.save(); }
+        render();
+      } catch (e) { toast(e.message, 'err'); }
     }));
   }
   function editPost(id) {
-    const p = id ? S.db.posts.find(x => x.id === id) : { id: '', slug: '', img: 'drone-air-2.jpg', date: new Date().toISOString().slice(0, 10),
+    const p = id ? state.posts.find(x => x.id === id) : { id: '', slug: '', img: 'drone-air-2.jpg', date: new Date().toISOString().slice(0, 10),
       cat_uz: 'Qo\'llanma', cat_ru: 'Гид', title_uz: '', title_ru: '', lead_uz: '', lead_ru: '', body_uz: '', body_ru: '' };
     modal(id ? 'Maqolani tahrirlash' : 'Yangi maqola',
       '<form id="bf">' + '<div class="grid g-2">' + fld('title_uz', 'Sarlavha (uz)', p.title_uz) + fld('title_ru', 'Sarlavha (ru)', p.title_ru) + '</div>' +
@@ -423,20 +550,24 @@
       area('lead_uz', 'Qisqa matn (uz)', p.lead_uz) + area('lead_ru', 'Qisqa matn (ru)', p.lead_ru) +
       area('body_uz', 'Matn (uz, HTML)', p.body_uz) + area('body_ru', 'Matn (ru, HTML)', p.body_ru) +
       '<button class="btn btn-p btn-block" type="submit">Saqlash</button></form>', true,
-      m => $('#bf', m).addEventListener('submit', e => {
+      m => $('#bf', m).addEventListener('submit', async e => {
         e.preventDefault();
         const d = Object.fromEntries(new FormData(e.target));
         if (!d.title_uz) { toast('Sarlavha kerak', 'err'); return; }
         const obj = { ...p, ...d, title_ru: d.title_ru || d.title_uz, cat_ru: p.cat_ru || d.cat_uz,
           slug: p.slug || slugify(d.title_uz) };
-        if (id) Object.assign(p, obj); else { obj.id = 'b_' + Date.now().toString(36); S.db.posts.unshift(obj); }
-        S.save(); closeModal(); toast('Saqlandi', 'ok'); render();
+        try {
+          if (S.online) await S.admin.savePost({ ...obj, id });
+          else if (id) Object.assign(p, obj);
+          else { obj.id = 'b_' + Date.now().toString(36); S.db.posts.unshift(obj); }
+          S.save(); closeModal(); toast('Saqlandi', 'ok'); render();
+        } catch (err) { toast(err.message, 'err'); }
       }));
   }
 
   /* ---------- 8. Murojaatlar ---------- */
   function pgLeads() {
-    const L = S.db.leads.slice().reverse();
+    const L = S.online ? state.leads : S.db.leads.slice().reverse();
     pane(hd('Murojaatlar', '<span class="mut sm">Qo\'ng\'iroqqa buyurtma va aloqa formasi</span>') +
       '<div class="tbl-wrap"><div class="tbl-scroll"><table class="dt">' +
       '<tr><th>Sana</th><th>Turi</th><th>Ism</th><th>Telefon</th><th>Xabar</th></tr>' +
@@ -463,14 +594,18 @@
       '<div class="grid g-2">' + fld('freeFrom', 'Bepul yetkazish chegarasi', s.freeFrom, 'number') + fld('refPercent', 'Referal foizi (%)', s.refPercent, 'number') + '</div>' +
       fld('refBonusNew', 'Yangi mijozga bonus (so\'m)', s.refBonusNew, 'number') +
       '<button class="btn btn-p" type="submit">Saqlash</button></form>');
-    $('#sf').addEventListener('submit', e => {
+    $('#sf').addEventListener('submit', async e => {
       e.preventDefault();
       const d = Object.fromEntries(new FormData(e.target));
       ['deliveryTashkent', 'deliveryRegion', 'freeFrom', 'refPercent', 'refBonusNew'].forEach(k => d[k] = +d[k]);
-      Object.assign(S.db.settings, d); S.save(); toast('Sozlamalar saqlandi', 'ok');
+      try {
+        if (S.online) await S.admin.saveSettings(d);
+        Object.assign(S.db.settings, d); S.save();
+        toast('Sozlamalar saqlandi', 'ok');
+      } catch (err) { toast(err.message, 'err'); }
     });
   }
 
   /* ---------- Boot ---------- */
-  render();
+  S.init().then(render);
 })();

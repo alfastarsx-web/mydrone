@@ -3,7 +3,7 @@ import { RequestMethod } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { json, urlencoded } from 'express';
-import { join } from 'node:path';
+import { extname, join } from 'node:path';
 import { AppModule } from './app.module';
 import { HttpErrorFilter } from './http-error.filter';
 
@@ -25,6 +25,15 @@ async function bootstrap() {
     exclude: [{ path: '', method: RequestMethod.GET }]
   });
   app.useStaticAssets(rootDir, { index: false });
+
+  /* SPA fallback: /katalog, /mahsulot/... kabi manzillarga index.html.
+     Statik fayllardan keyin turadi — mavjud fayl har doim ustun.
+     /api/* va kengaytmasi bor so'rovlar (masalan .js, .jpg) bunga tushmaydi. */
+  app.use((req: any, res: any, next: any) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+    if (req.path.startsWith('/api') || extname(req.path)) return next();
+    res.sendFile(join(rootDir, 'index.html'));
+  });
 
   const port = Number(process.env.PORT || 4000);
   const host = process.env.HOST || '127.0.0.1';

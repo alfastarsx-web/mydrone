@@ -3,10 +3,33 @@
 `TZ_drone_import_sayt.pdf` texnik topshirig'i asosida qurilgan onlayn-do'kon prototipi:
 Xitoydan dron va texnika import qilib sotuvchi sayt.
 
-**Texnologiya:** sof HTML/CSS/JS (framework yo'q, build qadam yo'q).
-Ma'lumotlar `localStorage`da saqlanadi — backend hali ulanmagan.
+**Texnologiya:** frontend — sof HTML/CSS/JS (framework yo'q, build qadam yo'q);
+backend — NestJS + TypeORM + PostgreSQL (`backend/`).
+
+Sayt **ikki rejimda** ishlaydi va o'zi qaysi biri ekanini aniqlaydi:
+
+| Rejim | Qachon | Ma'lumot qayerda |
+|---|---|---|
+| **Onlayn** | `/api/*` javob bersa | PostgreSQL bazasida — buyurtmalar, mijozlar, katalog haqiqiy |
+| **Demo** | backend ishlamasa | Brauzerda (`localStorage`), katalog `assets/js/data.js` dan |
+
+Demo rejim — dizaynni ko'rsatish va backendsiz hosting (masalan GitHub Pages)
+uchun. Hech qanday sozlash talab qilmaydi: backend o'chsa, sayt yiqilmaydi.
 
 ## Ishga tushirish
+
+**To'liq (backend bilan):**
+
+```bash
+createdb mydrone
+cd ~/Documents/dronmarket/backend
+cp .env.example .env      # DB_USERNAME ni o'zingiznikiga moslang
+npm install && npm run build && npm start
+```
+
+Sayt ham, API ham bitta manzilda: <http://127.0.0.1:4000>
+
+**Faqat frontend (demo rejim):**
 
 ```bash
 cd ~/Documents/dronmarket
@@ -27,8 +50,10 @@ So'ng brauzerda oching:
 
 | Qayer | Login | Parol |
 |---|---|---|
-| Sayt (mijoz kabineti) | `demo@mydrone.uz` | `demo12345` |
-| Admin panel | `admin@mydrone.uz` | `admin12345` |
+| Sayt (mijoz kabineti) — demo rejim | `demo@mydrone.uz` | `demo12345` |
+| Admin panel — ikkala rejim | `admin@mydrone.uz` | `admin12345` |
+
+Onlayn rejimda mijoz hisobini saytning o'zida ro'yxatdan o'tib yaratasiz.
 
 Promokodlar: `SALOM10` (−10%), `DRON500` (−500 000 so'm).
 
@@ -66,7 +91,8 @@ assets/css/style.css — sayt uslublari (dizayn tizimi, responsive)
 assets/css/admin.css — admin panel uslublari
 assets/js/data.js    — demo katalog: 32 mahsulot, 6 kategoriya, 6 maqola, FAQ
 assets/js/i18n.js    — o'zbek/rus tarjimalari
-assets/js/store.js   — ma'lumot qatlami (localStorage, savat, foydalanuvchi, buyurtma)
+assets/js/store.js   — ma'lumot qatlami: API va demo rejim, savat, foydalanuvchi, buyurtma
+backend/             — NestJS API (o'z README'si bor)
 assets/js/app.js     — sayt sahifalari va router
 assets/js/admin.js   — admin panel sahifalari
 assets/img/          — 52 ta rasm (Unsplash, bepul litsenziya)
@@ -164,9 +190,10 @@ Backend ulangach, autentifikatsiya serverga ko'chirilishi shart.
 
 TZ ning 10-bo'limidagi rejaga muvofiq:
 
-1. **Backend** — hozir barcha ma'lumot brauzerda. Keyingi qadam: NestJS/Node yoki Laravel
-   API + PostgreSQL. `assets/js/store.js` fayli shu maqsadda ajratilgan: uning
-   `save/load` funksiyalarini `fetch('/api/...')` chaqiruvlariga almashtirish yetarli.
+1. **Backend serverga chiqarilmagan** — kod tayyor va lokalda ishlaydi, lekin
+   mydrone.uz da hali statik (demo) rejimda turibdi. Chiqarish uchun serverda
+   PostgreSQL, Node va pm2 kerak; nginx `/api/*` so'rovlarini 4000-portga
+   yo'naltiradi.
 2. **Haqiqiy to'lov integratsiyasi** — Click/Payme uchun agregator (azma.uz, inpay.uz)
    bilan shartnoma va yuridik shaxs (YaTT/MChJ) kerak. Bu tashkiliy talab, texnik emas.
 3. **SMS / Telegram bildirishnomalari** — hozir faqat ekranda ko'rsatiladi.
