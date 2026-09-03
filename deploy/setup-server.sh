@@ -21,21 +21,17 @@ BK="/root/nginx-backup-$(date +%Y%m%d-%H%M%S).tar.gz"
 tar czf "$BK" /etc/nginx 2>/dev/null || true
 echo "  zaxira: $BK"
 
-# --- 1. Gzip (butun serverga, qo'shimcha fayl orqali) ---------------------
-say "Gzip siqish yoqilmoqda"
-cat > /etc/nginx/conf.d/gzip.conf <<'EOF'
-gzip on;
-gzip_vary on;
-gzip_comp_level 6;
-gzip_min_length 512;
-gzip_proxied any;
-gzip_types
-  text/plain text/css text/xml text/javascript
-  application/javascript application/x-javascript
-  application/json application/xml application/rss+xml
-  image/svg+xml font/ttf font/otf application/font-woff;
-EOF
-echo "  /etc/nginx/conf.d/gzip.conf yozildi"
+# --- 1. Eski global gzip fayli (agar oldingi urinishdan qolgan bo'lsa) ---
+say "Eski gzip qo'shimchasi tekshirilmoqda"
+# nginx.conf da odatda "gzip on;" allaqachon bor — conf.d ga qayta yozish
+# "duplicate directive" xatosini beradi. Shuning uchun gzip sozlamalari
+# quyida sayt server blokining ichiga yoziladi.
+if [ -f /etc/nginx/conf.d/gzip.conf ]; then
+  rm -f /etc/nginx/conf.d/gzip.conf
+  echo "  /etc/nginx/conf.d/gzip.conf o'chirildi"
+else
+  echo "  tozalash shart emas"
+fi
 
 # --- 2. Admin panel uchun parol ------------------------------------------
 say "Admin panel uchun parol yaratilmoqda"
@@ -90,6 +86,14 @@ SPA = """
     }
 """
 EXTRA = """
+    # --- Siqish (faqat shu sayt uchun; http darajasidagi sozlamani bekor qiladi) ---
+    gzip on;
+    gzip_vary on;
+    gzip_comp_level 6;
+    gzip_min_length 512;
+    gzip_proxied any;
+    gzip_types text/plain text/css text/xml text/javascript application/javascript application/json application/xml image/svg+xml font/ttf font/otf;
+
     # --- Admin panel: parol bilan himoyalangan ---
     location = /admin.html {
         auth_basic "MyDrone admin";
@@ -145,7 +149,9 @@ if nginx -t; then
   echo "  ✓ nginx qayta yuklandi"
 else
   echo "  ✗ XATO — o'zgarishlar qaytarilmoqda"
-  tar xzf "$BK" -C / && systemctl reload nginx
+  rm -f /etc/nginx/conf.d/gzip.conf          # tar qaytarish yangi fayllarni o'chirmaydi
+  tar xzf "$BK" -C /
+  nginx -t && systemctl reload nginx && echo "  ✓ eski holat tiklandi"
   exit 1
 fi
 
