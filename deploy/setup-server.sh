@@ -70,50 +70,60 @@ if [ -z "$CONF" ]; then
   cat deploy/nginx-snippet.conf 2>/dev/null || true
 else
   echo "  fayl: $CONF"
-  if grep -q "htpasswd-mydrone" "$CONF"; then
-    echo "  admin himoyasi allaqachon qo'shilgan"
-  else
+  {
     # oxirgi } dan oldin location bloklarini kiritamiz
     python3 - "$CONF" <<'PY'
-import sys, re
+import sys, re, os
 p = sys.argv[1]
 s = open(p).read()
 
-SPA = """
-    # --- SPA fallback: /katalog, /mahsulot/... manzillari index.html ga ---
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-"""
-EXTRA = """
-    # --- Siqish (faqat shu sayt uchun; http darajasidagi sozlamani bekor qiladi) ---
+SITE_ROOT = os.environ.get('SITE_ROOT', '').strip()
+R = ('        root %s;\n' % SITE_ROOT) if SITE_ROOT else ''
+print("  sayt papkasi: %s" % (SITE_ROOT or "(berilmagan)"))
+
+A = "    # >>> mydrone-deploy — avtomatik qo'shilgan, qo'lda tahrirlamang"
+B = "    # <<< mydrone-deploy"
+
+# 1) Avvalgi ishga tushirishda qo'shilgan blok (markerli) olib tashlanadi
+s = re.sub(re.escape(A) + r'.*?' + re.escape(B) + r'\n?', '', s, flags=re.S)
+
+# 2) Markerlar paydo bo'lishidan oldingi versiya qo'shgan bloklar ham tozalanadi
+s = re.sub(r'\n[ \t]*#[^\n]*(?:Admin panel: parol|Statik fayllar uchun kesh|Siqish \(|SPA fallback)[^\n]*', '', s)
+s = re.sub(r'\n[ \t]*location\s*=\s*/admin\.html\s*\{[^{}]*\}', '', s)
+s = re.sub(r'\n[ \t]*location\s+~\*[^{]*\{[^{}]*max-age=(?:604800|2592000)[^{}]*\}', '', s)
+
+has_gzip = re.search(r'^\s*gzip\s+on\s*;', s, re.M) is not None
+GZIP = '' if has_gzip else """
     gzip on;
     gzip_vary on;
     gzip_comp_level 6;
     gzip_min_length 512;
     gzip_proxied any;
     gzip_types text/plain text/css text/xml text/javascript application/javascript application/json application/xml image/svg+xml font/ttf font/otf;
+"""
 
-    # --- Admin panel: parol bilan himoyalangan ---
+EXTRA = A + "\n" + GZIP + """
     location = /admin.html {
         auth_basic "MyDrone admin";
         auth_basic_user_file /etc/nginx/.htpasswd-mydrone;
+""" + R + """        try_files $uri =404;
+    }
+
+    location ~* \\.(?:css|js)$ {
+""" + R + """        expires 7d;
+        add_header Cache-Control "public, max-age=604800";
         try_files $uri =404;
     }
 
-    # --- Statik fayllar uchun kesh ---
-    location ~* \\.(?:css|js)$ {
-        expires 7d;
-        add_header Cache-Control "public, max-age=604800";
-    }
     location ~* \\.(?:jpg|jpeg|png|gif|webp|svg|ico|woff2?)$ {
-        expires 30d;
+""" + R + """        expires 30d;
         add_header Cache-Control "public, max-age=2592000, immutable";
+        try_files $uri =404;
     }
-"""
+""" + B + "\n"
 
-# Mavjud "location / { ... }" ni topamiz — lekin http→https yo'naltiruvchi
-# blokka tegmaymiz (uning ichida return 301 bo'ladi).
+# 3) SPA fallback: mavjud "location /" ga try_files qo'shamiz
+#    (http->https yo'naltiruvchi blokka tegmaymiz — unda return 30x bo'ladi)
 target = None
 for m in re.finditer(r'location\s+/\s*\{([^{}]*)\}', s):
     if not re.search(r'return\s+30\d', m.group(1)):
@@ -129,17 +139,20 @@ if target:
         body2 = body.rstrip() + "\n        try_files $uri $uri/ /index.html;\n    "
         print("  mavjud location / ga try_files qo'shildi")
     s = s[:target.start(1)] + body2 + s[target.end(1):]
-    add = EXTRA
 else:
+    EXTRA = A + "\n" + GZIP + """
+    location / {
+""" + R + """        try_files $uri $uri/ /index.html;
+    }
+""" + EXTRA[len(A) + 1 + len(GZIP):]
     print("  yangi location / bloki qo'shildi")
-    add = SPA + EXTRA
 
 i = s.rstrip().rfind('}')
-s = s[:i] + add + s[i:]
+s = s[:i] + EXTRA + s[i:]
 open(p, 'w').write(s)
-print("  admin himoyasi va kesh qoidalari qo'shildi")
+print("  gzip: %s | admin himoyasi va kesh: qo'shildi" % ("allaqachon bor" if has_gzip else "qo'shildi"))
 PY
-  fi
+  }
 fi
 
 # --- 4. Tekshirish va qayta yuklash --------------------------------------

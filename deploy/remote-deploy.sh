@@ -71,7 +71,7 @@ say "Nginx sozlanmoqda (gzip, try_files, kesh)"
 # admin.html serverga chiqarilmaydi — parol ekranga (va CI logiga) chiqmasin
 ADMIN_PASS="${ADMIN_PASS:-$(openssl rand -hex 16)}"
 export ADMIN_PASS
-NGINX_CONF="$CONF" bash "$SRC/deploy/setup-server.sh"
+NGINX_CONF="$CONF" SITE_ROOT="$DIR" bash "$SRC/deploy/setup-server.sh"
 
 say "Fayllar ko'chirilmoqda"
 cd "$SRC"
