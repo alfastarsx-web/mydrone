@@ -66,7 +66,9 @@ fi
 
 # --- 3. Server blokiga admin himoyasi + kesh qo'shish ---------------------
 say "Nginx server bloki yangilanmoqda (SPA fallback + admin paroli + kesh)"
-CONF=$(grep -rlE "server_name[^;]*\b${DOMAIN}\b" /etc/nginx/sites-enabled /etc/nginx/conf.d 2>/dev/null | head -1 || true)
+# Konfiguratsiya fayli tashqaridan berilishi mumkin (remote-deploy.sh uni aniqlaydi)
+CONF="${NGINX_CONF:-}"
+[ -n "$CONF" ] || CONF=$(grep -rlE "server_name[^;]*${DOMAIN//./\\.}" /etc/nginx/ 2>/dev/null | head -1 || true)
 if [ -z "$CONF" ]; then
   echo "  ${DOMAIN} uchun server bloki topilmadi — quyidagini qo'lda qo'shing:"
   cat deploy/nginx-snippet.conf 2>/dev/null || true
