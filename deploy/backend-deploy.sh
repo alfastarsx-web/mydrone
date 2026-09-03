@@ -24,13 +24,30 @@ say "Muhit tekshirilmoqda"
 # Node odatda nvm orqali o'rnatiladi — interaktiv bo'lmagan ssh seansida
 # PATH ga tushmaydi, shuning uchun uni qo'lda yuklaymiz.
 export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+# nvm.sh ichida aniqlanmagan o'zgaruvchilar bor — `set -u` bilan skript
+# jimgina to'xtab qolmasligi uchun yuklash vaqtida cheklovlarni o'chiramiz.
+set +eu
 # shellcheck disable=SC1091
-[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" >/dev/null 2>&1 || true
-[ -s "$HOME/.profile" ] && . "$HOME/.profile" >/dev/null 2>&1 || true
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+[ -s "$HOME/.profile" ] && . "$HOME/.profile"
+set -eu
 export PATH="$PATH:/usr/local/bin:/usr/bin"
 
-command -v node >/dev/null || { echo "XATO: Node.js topilmadi"; exit 1; }
-command -v npm  >/dev/null || { echo "XATO: npm topilmadi"; exit 1; }
+if ! command -v node >/dev/null; then
+  # nvm bo'lmasa — o'rnatilgan eng so'nggi node'ni qo'lda topamiz
+  NODE_BIN="$(ls -d "$NVM_DIR"/versions/node/*/bin 2>/dev/null | sort -V | tail -1 || true)"
+  if [ -n "$NODE_BIN" ]; then export PATH="$NODE_BIN:$PATH"; fi
+fi
+
+if ! command -v node >/dev/null; then
+  echo "XATO: Node.js topilmadi."
+  echo "  PATH: $PATH"
+  echo "  NVM_DIR: $NVM_DIR"
+  ls -la "$NVM_DIR/versions/node" 2>/dev/null | head -5 || echo "  nvm papkasi yo'q"
+  exit 1
+fi
+
+command -v npm >/dev/null || { echo "XATO: npm topilmadi"; exit 1; }
 echo "  node: $(node -v), npm: $(npm -v)"
 
 if ! command -v psql >/dev/null; then
