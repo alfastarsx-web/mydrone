@@ -45,14 +45,23 @@ if [ -f "$HT" ]; then
   echo "  $HT allaqachon mavjud — o'zgartirilmadi"
   echo "  parolni yangilash uchun: htpasswd $HT $ADMIN_USER"
 else
-  PASS="$(openssl rand -base64 12 | tr -d '/+=' | head -c 14)"
+  # Parol ADMIN_PASS o'zgaruvchisida berilishi mumkin (CI uchun — ekranga chiqmaydi)
+  if [ -n "${ADMIN_PASS:-}" ]; then
+    PASS="$ADMIN_PASS"; SHOW=0
+  else
+    PASS="$(openssl rand -base64 12 | tr -d '/+=' | head -c 14)"; SHOW=1
+  fi
   htpasswd -bc "$HT" "$ADMIN_USER" "$PASS" >/dev/null 2>&1
   chmod 640 "$HT"; chown root:www-data "$HT" 2>/dev/null || true
-  echo "  ┌────────────────────────────────────────────┐"
-  echo "  │  ADMIN PANEL KIRISH (saqlab qo'ying!)      │"
-  echo "  │  login: $ADMIN_USER"
-  echo "  │  parol: $PASS"
-  echo "  └────────────────────────────────────────────┘"
+  if [ "$SHOW" = "1" ]; then
+    echo "  ┌────────────────────────────────────────────┐"
+    echo "  │  ADMIN PANEL KIRISH (saqlab qo'ying!)      │"
+    echo "  │  login: $ADMIN_USER"
+    echo "  │  parol: $PASS"
+    echo "  └────────────────────────────────────────────┘"
+  else
+    echo "  parol ADMIN_PASS orqali berildi (ekranga chiqarilmadi)"
+  fi
 fi
 
 # --- 3. Server blokiga admin himoyasi + kesh qo'shish ---------------------
