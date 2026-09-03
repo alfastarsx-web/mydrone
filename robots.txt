@@ -1,0 +1,7 @@
+# MyDrone.uz
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /deploy/
+
+Sitemap: https://mydrone.uz/sitemap.xml

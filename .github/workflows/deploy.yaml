@@ -1,0 +1,77 @@
+# main'ga har push bo'lganda mydrone.uz avtomatik yangilanadi.
+#
+# Kerakli secret'lar (Settings → Secrets and variables → Actions):
+#   SSH_PRIVATE_KEY — serverga kiruvchi deploy kaliti (yopiq qismi)
+#   SSH_HOST        — server IP, masalan 46.8.195.59
+#   DEPLOY_PATH     — saytning serverdagi papkasi (ixtiyoriy,
+#                     ko'rsatilmasa /var/www/mydrone ishlatiladi)
+
+name: Deploy to mydrone.uz
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-mydrone
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Secret'lar sozlanganmi
+        id: check
+        run: |
+          if [ -z "${{ secrets.SSH_HOST }}" ] || [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "::notice::SSH_HOST yoki SSH_PRIVATE_KEY sozlanmagan — deploy o'tkazib yuborildi."
+            echo "Sozlash: Settings → Secrets and variables → Actions"
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: SSH kalitini tayyorlash
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Maqsad papkani tekshirish
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          TARGET="${{ secrets.DEPLOY_PATH }}"
+          [ -n "$TARGET" ] || TARGET="/var/www/mydrone"
+          echo "TARGET=$TARGET" >> $GITHUB_ENV
+
+          # Xavfsizlik: noto'g'ri papkani o'chirib yubormaslik uchun —
+          # u yerda index.html borligiga ishonch hosil qilamiz.
+          ssh -o BatchMode=yes -o ConnectTimeout=30 -o StrictHostKeyChecking=accept-new \
+            root@"${{ secrets.SSH_HOST }}" "test -f '$TARGET/index.html'" || {
+              echo "::error::$TARGET ichida index.html topilmadi."
+              echo "DEPLOY_PATH secret'ini to'g'ri papkaga sozlang (yoki serverda papkani yarating)."
+              exit 1
+            }
+
+      - name: Fayllarni yuklash (rsync)
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          rsync -az --delete \
+            --exclude '.git' --exclude '.github' --exclude '.claude' \
+            --exclude 'deploy' --exclude 'README.md' --exclude '.gitignore' \
+            -e "ssh -o BatchMode=yes -o ConnectTimeout=30 -o StrictHostKeyChecking=accept-new" \
+            ./ root@"${{ secrets.SSH_HOST }}":"$TARGET"/
+
+      - name: Tekshirish
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          code=$(curl -so /dev/null -w '%{http_code}' -m 20 https://mydrone.uz/)
+          echo "mydrone.uz javobi: $code"
+          [ "$code" = "200" ] || { echo "::error::Sayt 200 qaytarmadi"; exit 1; }
+          curl -s -m 20 https://mydrone.uz/ | grep -q "MyDrone" \
+            && echo "✓ Sayt yangilandi" || { echo "::error::Sahifa mazmuni kutilganidek emas"; exit 1; }

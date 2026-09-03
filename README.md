@@ -79,6 +79,57 @@ Ko'p tillilik allaqachon ishlaydi (uz/ru), valyuta bitta joyda sozlanadi.
 buyurtmalar (holatni o'zgartirish), mahsulotlar (CRUD), kategoriyalar (CRUD),
 mijozlar, promokodlar, blog (CRUD), murojaatlar, sozlamalar.
 
+## Serverga chiqarish (deploy)
+
+Sayt **https://mydrone.uz** manzilida ishlaydi (server 46.8.195.59, nginx + Let's Encrypt).
+
+### Avtomatik deploy
+
+`.github/workflows/deploy.yaml` — `main` branch'ga har push bo'lganda fayllarni
+serverga rsync qiladi va saytning 200 qaytarishini tekshiradi.
+
+Ishga tushishi uchun GitHub'da **Settings → Secrets and variables → Actions**
+bo'limiga uchta secret qo'shiladi:
+
+| Secret | Qiymat |
+|---|---|
+| `SSH_PRIVATE_KEY` | serverga kiruvchi deploy kalitining yopiq qismi |
+| `SSH_HOST` | `46.8.195.59` |
+| `DEPLOY_PATH` | saytning serverdagi papkasi (ixtiyoriy, standart `/var/www/mydrone`) |
+
+Secret'lar sozlanmaguncha workflow xato bermaydi — deploy qadamlarini
+o'tkazib yuboradi va izoh qoldiradi.
+
+Kalitni terminaldan qo'shish:
+
+```bash
+gh secret set SSH_PRIVATE_KEY -R alfastarsx-web/mydrone < ~/.ssh/id_ed25519
+gh secret set SSH_HOST -R alfastarsx-web/mydrone --body "46.8.195.59"
+gh secret set DEPLOY_PATH -R alfastarsx-web/mydrone --body "/var/www/mydrone"
+```
+
+### Serverni bir marta sozlash
+
+`deploy/setup-server.sh` — gzip siqishni yoqadi, admin panelga nginx darajasida
+parol qo'yadi va statik fayllarga kesh sarlavhalarini qo'shadi. Serverda root
+bo'lib bir marta ishga tushiriladi:
+
+```bash
+cd /var/www/mydrone && bash deploy/setup-server.sh
+```
+
+Skript o'zgartirishdan oldin `/etc/nginx` ni zaxiralaydi, `nginx -t` bilan
+tekshiradi va xato chiqsa hammasini o'z holiga qaytaradi.
+
+### Xavfsizlik eslatmasi
+
+Admin panelning kirish oynasi **faqat brauzer tomonida** ishlaydi — parol
+`assets/js/store.js` faylida ochiq turadi va uni istalgan tashrifchi o'qiy oladi.
+Hozircha zarari yo'q (ma'lumot har bir tashrifchining o'z brauzerida saqlanadi),
+lekin shuning uchun `setup-server.sh` nginx darajasida qo'shimcha parol qo'yadi.
+Backend ulangach, autentifikatsiya serverga ko'chirilishi shart.
+
+
 ## Hali qilinmagan (keyingi bosqichlar)
 
 TZ ning 10-bo'limidagi rejaga muvofiq:
@@ -92,6 +143,11 @@ TZ ning 10-bo'limidagi rejaga muvofiq:
 4. **Rasmlar** — hozirgi suratlar Unsplash'dan olingan bepul namunalar.
    Sotuvga chiqishdan oldin ular haqiqiy mahsulot fotolari bilan almashtirilishi kerak.
 5. **Narxlar va mahsulot ro'yxati** namunaviy — haqiqiy tannarx va ustama asosida yangilanadi.
+6. **SEO uchun haqiqiy manzillar** — sayt hozir hash-router ishlatadi (`#/p/dji-mini-4-pro`).
+   Google `#` dan keyingi qismni alohida sahifa sifatida indekslamaydi, shuning uchun
+   `sitemap.xml` da faqat bosh sahifa bor. Har bir mahsulot Google'da chiqishi uchun
+   History API manzillariga (`/p/dji-mini-4-pro`) o'tish va nginx'da
+   `try_files $uri /index.html;` qo'shish kerak.
 
 ## Eslatma
 

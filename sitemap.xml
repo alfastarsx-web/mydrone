@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Eslatma: sayt hozir hash-router ishlatadi (#/katalog, #/p/...).
+     Qidiruv tizimlari # dan keyingi qismni alohida sahifa sifatida indekslamaydi,
+     shuning uchun sitemap'da faqat bosh sahifa bor. Har bir mahsulot va kategoriya
+     alohida indekslanishi uchun History API manzillariga o'tish kerak
+     (nginx try_files bilan) — README dagi "Keyingi qadamlar" ga qarang. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://mydrone.uz/</loc>
+    <lastmod>2026-09-03</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>
