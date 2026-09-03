@@ -20,6 +20,15 @@ say() { printf "\n== %s ==\n" "$1"; }
 
 # ---------- 1. Kerakli dasturlar ----------
 say "Muhit tekshirilmoqda"
+
+# Node odatda nvm orqali o'rnatiladi — interaktiv bo'lmagan ssh seansida
+# PATH ga tushmaydi, shuning uchun uni qo'lda yuklaymiz.
+export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+# shellcheck disable=SC1091
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" >/dev/null 2>&1 || true
+[ -s "$HOME/.profile" ] && . "$HOME/.profile" >/dev/null 2>&1 || true
+export PATH="$PATH:/usr/local/bin:/usr/bin"
+
 command -v node >/dev/null || { echo "XATO: Node.js topilmadi"; exit 1; }
 command -v npm  >/dev/null || { echo "XATO: npm topilmadi"; exit 1; }
 echo "  node: $(node -v), npm: $(npm -v)"
