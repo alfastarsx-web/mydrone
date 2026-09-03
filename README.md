@@ -164,6 +164,26 @@ gh secret set SSH_HOST -R alfastarsx-web/mydrone --body "46.8.195.59"
 gh secret set DEPLOY_PATH -R alfastarsx-web/mydrone --body "/var/www/mydrone"
 ```
 
+### Backend serverda
+
+`deploy/backend-deploy.sh` (deploy paytida avtomatik chaqiriladi):
+PostgreSQL foydalanuvchisi va `mydrone` bazasini yaratadi, `.env` ni tasodifiy
+parollar bilan bir marta yozadi (`chmod 600`), kodni yig'adi va pm2 orqali
+`mydrone-api` nomi bilan ishga tushiradi.
+
+| Nima | Qiymat |
+|---|---|
+| Port | `4010` (CRM backendi 4000 da) |
+| pm2 nomi | `mydrone-api` |
+| Baza | `mydrone` (foydalanuvchi `mydrone`) |
+| Kod | `/opt/mydrone-src` |
+| nginx | `/api/*` → `127.0.0.1:4010`, qolgani statik fayllar |
+
+Serverda tekshirish: `pm2 status`, `pm2 logs mydrone-api`.
+
+`.env` faylini backend deploy'i qayta yozmaydi — parollarni o'zgartirmoqchi
+bo'lsangiz, faylni qo'lda tahrirlab `pm2 restart mydrone-api` qiling.
+
 ### Serverni bir marta sozlash
 
 `deploy/setup-server.sh` — gzip siqishni yoqadi, admin panelga nginx darajasida
@@ -190,10 +210,9 @@ Backend ulangach, autentifikatsiya serverga ko'chirilishi shart.
 
 TZ ning 10-bo'limidagi rejaga muvofiq:
 
-1. **Backend serverga chiqarilmagan** — kod tayyor va lokalda ishlaydi, lekin
-   mydrone.uz da hali statik (demo) rejimda turibdi. Chiqarish uchun serverda
-   PostgreSQL, Node va pm2 kerak; nginx `/api/*` so'rovlarini 4000-portga
-   yo'naltiradi.
+1. **Haqiqiy to'lov integratsiyasi** — Click/Payme uchun agregator (azma.uz,
+   inpay.uz) bilan shartnoma va yuridik shaxs kerak. Hozir to'lov usuli
+   buyurtmada saqlanadi, lekin pul o'tkazish amalga oshmaydi.
 2. **Haqiqiy to'lov integratsiyasi** — Click/Payme uchun agregator (azma.uz, inpay.uz)
    bilan shartnoma va yuridik shaxs (YaTT/MChJ) kerak. Bu tashkiliy talab, texnik emas.
 3. **SMS / Telegram bildirishnomalari** — hozir faqat ekranda ko'rsatiladi.
