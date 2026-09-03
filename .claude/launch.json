@@ -2,9 +2,9 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "dronmarket",
+      "name": "mydrone",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "5182"],
+      "runtimeArgs": ["deploy/dev-server.py", "5182"],
       "port": 5182
     }
   ]

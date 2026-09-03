@@ -58,6 +58,10 @@ jobs:
               exit 1
             }
 
+      - name: Sitemap'ni yangilash
+        if: steps.check.outputs.skip != 'true'
+        run: node deploy/gen-sitemap.js
+
       - name: Fayllarni yuklash (rsync)
         if: steps.check.outputs.skip != 'true'
         run: |
@@ -75,3 +79,6 @@ jobs:
           [ "$code" = "200" ] || { echo "::error::Sayt 200 qaytarmadi"; exit 1; }
           curl -s -m 20 https://mydrone.uz/ | grep -q "MyDrone" \
             && echo "✓ Sayt yangilandi" || { echo "::error::Sahifa mazmuni kutilganidek emas"; exit 1; }
+          deep=$(curl -so /dev/null -w '%{http_code}' -m 20 https://mydrone.uz/mahsulot/dm-air-4k-pro)
+          echo "ichki manzil javobi: $deep"
+          [ "$deep" = "200" ] || echo "::warning::Ichki manzil 200 qaytarmadi — nginx'da try_files sozlanganini tekshiring (deploy/setup-server.sh)"

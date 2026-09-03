@@ -10,8 +10,13 @@ Ma'lumotlar `localStorage`da saqlanadi — backend hali ulanmagan.
 
 ```bash
 cd ~/Documents/dronmarket
-python3 -m http.server 5182
+python3 deploy/dev-server.py 5182
 ```
+
+> Oddiy `python3 -m http.server` **yaramaydi**: sayt haqiqiy manzillar ishlatadi
+> (`/mahsulot/dji-mini-4-pro`) va bunday papka mavjud emas — server 404 beradi.
+> `deploy/dev-server.py` topilmagan yo'llarga `index.html` qaytaradi, xuddi
+> nginx'dagi `try_files` kabi.
 
 So'ng brauzerda oching:
 
@@ -26,6 +31,31 @@ So'ng brauzerda oching:
 | Admin panel | `admin@mydrone.uz` | `admin12345` |
 
 Promokodlar: `SALOM10` (−10%), `DRON500` (−500 000 so'm).
+
+## Manzillar (URL)
+
+Sayt History API bilan ishlaydi — har bir sahifaning haqiqiy manzili bor,
+shuning uchun Google ularni alohida indekslay oladi.
+
+| Manzil | Sahifa |
+|---|---|
+| `/` | Bosh sahifa |
+| `/katalog` · `/katalog?cat=dronlar&brand=DJI&sort=cheap` | Katalog, filtr va saralash manzilga yoziladi |
+| `/mahsulot/<slug>` | Mahsulot kartasi (Product JSON-LD bilan) |
+| `/blog` · `/blog/<slug>` | Blog |
+| `/yetkazib-berish` `/kafolat` `/biz-haqimizda` `/aloqa` `/savollar` `/referal-dastur` | Statik sahifalar |
+| `/savat` `/buyurtma` `/buyurtma/<id>` `/kabinet/...` `/kirish` | Shaxsiy sahifalar — `noindex` |
+
+Eski `#/...` havolalar avtomatik yangi manzilga o'tkaziladi.
+
+**Har bir sahifa uchun** `<title>`, `meta description`, `canonical` va Open Graph
+teglari alohida yoziladi; mahsulot sahifalarida qo'shimcha `Product` JSON-LD
+(narx, valyuta, mavjudlik) bo'ladi. `sitemap.xml` katalogdan avtomatik yaratiladi
+(`node deploy/gen-sitemap.js`) va deploy paytida yangilanadi.
+
+> **Muhim:** haqiqiy manzillar ishlashi uchun nginx'da
+> `try_files $uri $uri/ /index.html;` bo'lishi shart — `deploy/setup-server.sh`
+> buni avtomatik qo'shadi.
 
 ## Fayl tuzilishi
 
@@ -143,11 +173,14 @@ TZ ning 10-bo'limidagi rejaga muvofiq:
 4. **Rasmlar** — hozirgi suratlar Unsplash'dan olingan bepul namunalar.
    Sotuvga chiqishdan oldin ular haqiqiy mahsulot fotolari bilan almashtirilishi kerak.
 5. **Narxlar va mahsulot ro'yxati** namunaviy — haqiqiy tannarx va ustama asosida yangilanadi.
-6. **SEO uchun haqiqiy manzillar** — sayt hozir hash-router ishlatadi (`#/p/dji-mini-4-pro`).
-   Google `#` dan keyingi qismni alohida sahifa sifatida indekslamaydi, shuning uchun
-   `sitemap.xml` da faqat bosh sahifa bor. Har bir mahsulot Google'da chiqishi uchun
-   History API manzillariga (`/p/dji-mini-4-pro`) o'tish va nginx'da
-   `try_files $uri /index.html;` qo'shish kerak.
+6. **Sharh va reyting raqamlari namunaviy.** Mahsulot sahifasidagi JSON-LD ga
+   `aggregateRating` ataylab kiritilmadi — Google soxta reytinglar uchun jarima
+   beradi. Haqiqiy sharhlar yig'ilgach qo'shiladi.
+7. **Kontentni oldindan render qilish (SSR/prerender)** — hozir sahifa mazmunini
+   JavaScript chizadi. Googlebot buni o'qiy oladi, lekin ba'zi ijtimoiy tarmoq
+   botlari (Telegram, Facebook) faqat HTML'ni o'qiydi, shuning uchun ulashilganda
+   barcha sahifalar uchun bitta og:image ko'rinadi. Backend qo'shilgach prerender
+   qilinsa, bu ham hal bo'ladi.
 
 ## Eslatma
 

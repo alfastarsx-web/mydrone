@@ -2,7 +2,7 @@
 (function () {
   const S = window.Store, t = k => S.t(k), L = (o, f) => S.L(o, f);
   const money = n => S.money(n);
-  const IMG = f => 'assets/img/' + f;
+  const IMG = f => '/assets/img/' + f;
   const $ = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => [...(r || document).querySelectorAll(s)];
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -35,17 +35,32 @@
     moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="19" height="19"><path d="M20 14.5A8.2 8.2 0 019.5 4a8.3 8.3 0 106.9 12.4c1.4 0 2.6-.7 3.6-1.9z"/></svg>'
   };
 
-  /* ---------- Marshrut ---------- */
-  function parseHash() {
-    const h = location.hash.replace(/^#\/?/, '') || '';
-    const [path, qs] = h.split('?');
-    const parts = path.split('/').filter(Boolean);
+  /* ---------- Marshrut (History API — haqiqiy manzillar) ---------- */
+  function parseRoute() {
+    const parts = location.pathname.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);
     const q = {};
-    new URLSearchParams(qs || '').forEach((v, k) => q[k] = v);
-    return { parts, q, path };
+    new URLSearchParams(location.search).forEach((v, k) => q[k] = v);
+    return { parts, q };
   }
-  const go = h => { location.hash = h; };
+  function go(url, replace) {
+    if (replace) history.replaceState({}, '', url);
+    else history.pushState({}, '', url);
+    route();
+  }
   window.go = go;
+
+  /* Ichki havolalarni ushlab olish — sahifa qayta yuklanmasin */
+  document.addEventListener('click', e => {
+    const a = e.target.closest('a');
+    if (!a) return;
+    const href = a.getAttribute('href');
+    if (!href || a.target === '_blank' || a.hasAttribute('download')) return;
+    if (/^(https?:|mailto:|tel:|#)/.test(href) || href.endsWith('.html')) return;
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    go(href);
+  });
+  window.addEventListener('popstate', () => route());
 
   /* ---------- Toast / modal ---------- */
   function toast(msg, kind) {
@@ -88,12 +103,12 @@
     const specs = (p.specs || []).slice(0, 2)
       .map(s => '<span>' + esc(S.lang === 'ru' ? s[1] : s[0]) + ': ' + esc(s[2]) + '</span>').join('');
     return '<article class="pc">' +
-      '<a class="pc-img" href="#/p/' + p.slug + '"><img src="' + IMG(p.imgs[0]) + '" alt="' + esc(L(p, 'name')) + '" loading="lazy">' +
+      '<a class="pc-img" href="/mahsulot/' + p.slug + '"><img src="' + IMG(p.imgs[0]) + '" alt="' + esc(L(p, 'name')) + '" loading="lazy">' +
       '<div class="pc-tags">' + tags.join('') + '</div></a>' +
       '<button class="fav' + (S.isFav(p.id) ? ' on' : '') + '" data-act="fav" data-id="' + p.id + '" title="' + t('favs') + '">' + ic.heart + '</button>' +
       '<div class="pc-b">' +
       '<span class="pc-cat">' + esc(L(S.category(p.cat), 'name')) + '</span>' +
-      '<h3><a href="#/p/' + p.slug + '">' + esc(L(p, 'name')) + '</a></h3>' +
+      '<h3><a href="/mahsulot/' + p.slug + '">' + esc(L(p, 'name')) + '</a></h3>' +
       '<div class="pc-specs">' + specs + '</div>' +
       stockBadge(p) +
       '<div class="pc-foot"><div class="price">' + money(p.price) + ' <span style="font-size:12px;font-weight:500">' + t('currency') + '</span>' +
@@ -120,29 +135,29 @@
       '<a href="tel:' + st.phone.replace(/\s/g, '') + '">' + st.phone + '</a>' +
       '</div></div>' +
       '<header class="hd"><div class="wrap hd-in">' +
-      '<a class="logo" href="#/"><span class="logo-mark">' + ic.drone + '</span>My<b>Drone</b></a>' +
+      '<a class="logo" href="/"><span class="logo-mark">' + ic.drone + '</span>My<b>Drone</b></a>' +
       '<div class="search"><input id="q" type="search" placeholder="' + t('searchPh') + '" autocomplete="off">' +
       '<button class="s-btn">' + ic.search + '</button><div id="ac"></div></div>' +
       '<div class="hd-acts">' +
       '<button class="icon-btn" data-theme-toggle title="' + t('themeSwitch') + '">' + (S.effTheme() === 'dark' ? ic.sun : ic.moon) + '</button>' +
       '<div class="lang"><button data-lang="uz" class="' + (S.lang === 'uz' ? 'on' : '') + '">UZ</button>' +
       '<button data-lang="ru" class="' + (S.lang === 'ru' ? 'on' : '') + '">RU</button></div>' +
-      '<a class="icon-btn" href="#/account/favs" title="' + t('favs') + '">' + ic.heart.replace('17', '19').replace('17', '19') + '</a>' +
-      '<a class="icon-btn" href="#/cart" title="' + t('cart') + '">' + ic.cart +
+      '<a class="icon-btn" href="/kabinet/saqlanganlar" title="' + t('favs') + '">' + ic.heart.replace('17', '19').replace('17', '19') + '</a>' +
+      '<a class="icon-btn" href="/savat" title="' + t('cart') + '">' + ic.cart +
       (S.cartCount() ? '<span class="badge">' + S.cartCount() + '</span>' : '') + '</a>' +
-      '<a class="icon-btn" href="' + (u ? '#/account' : '#/login') + '" title="' + (u ? esc(u.name) : t('login')) + '">' + ic.user + '</a>' +
+      '<a class="icon-btn" href="' + (u ? '/kabinet' : '/kirish') + '" title="' + (u ? esc(u.name) : t('login')) + '">' + ic.user + '</a>' +
       '</div></div>' +
       '<nav class="cats"><div class="wrap">' +
-      '<a href="#/catalog">' + t('allCats') + '</a>' +
-      S.db.categories.map(c => '<a href="#/catalog?cat=' + c.id + '">' + esc(L(c, 'name')) + '</a>').join('') +
-      '<a href="#/blog">' + t('fBlog') + '</a><a href="#/referral">' + t('fRef') + '</a><a href="#/faq">' + t('fFaq') + '</a>' +
+      '<a href="/katalog">' + t('allCats') + '</a>' +
+      S.db.categories.map(c => '<a href="/katalog?cat=' + c.id + '">' + esc(L(c, 'name')) + '</a>').join('') +
+      '<a href="/blog">' + t('fBlog') + '</a><a href="/referal-dastur">' + t('fRef') + '</a><a href="/savollar">' + t('fFaq') + '</a>' +
       '</div></nav></header>';
   }
 
   function renderFooter() {
     const st = S.db.settings;
     $('#ft').innerHTML = '<footer><div class="wrap"><div class="f-grid">' +
-      '<div><a class="logo" href="#/"><span class="logo-mark">' + ic.drone + '</span>My<b>Drone</b></a>' +
+      '<div><a class="logo" href="/"><span class="logo-mark">' + ic.drone + '</span>My<b>Drone</b></a>' +
       '<p class="mut sm" style="margin:14px 0 0;max-width:290px">' +
       (S.lang === 'ru' ? 'Импорт дронов и техники из Китая с официальной гарантией и доставкой по Узбекистану.'
         : "Xitoydan dron va texnika importi — rasmiy kafolat va O'zbekiston bo'ylab yetkazib berish bilan.") + '</p>' +
@@ -151,11 +166,11 @@
       '<a href="https://wa.me/' + st.whatsapp + '" target="_blank" rel="noopener">' + ic.wa + '</a>' +
       '<a href="https://instagram.com/' + st.instagram + '" target="_blank" rel="noopener">' + ic.inst + '</a></div></div>' +
       '<div><h4>' + t('fAbout') + '</h4>' +
-      '<a href="#/about">' + t('fAboutUs') + '</a><a href="#/blog">' + t('fBlog') + '</a>' +
-      '<a href="#/referral">' + t('fRef') + '</a><a href="#/contact">' + t('fContact') + '</a></div>' +
+      '<a href="/biz-haqimizda">' + t('fAboutUs') + '</a><a href="/blog">' + t('fBlog') + '</a>' +
+      '<a href="/referal-dastur">' + t('fRef') + '</a><a href="/aloqa">' + t('fContact') + '</a></div>' +
       '<div><h4>' + t('fHelp') + '</h4>' +
-      '<a href="#/delivery">' + t('fDelivery') + '</a><a href="#/warranty">' + t('fWarranty') + '</a>' +
-      '<a href="#/faq">' + t('fFaq') + '</a><a href="#/account">' + t('account') + '</a></div>' +
+      '<a href="/yetkazib-berish">' + t('fDelivery') + '</a><a href="/kafolat">' + t('fWarranty') + '</a>' +
+      '<a href="/savollar">' + t('fFaq') + '</a><a href="/kabinet">' + t('account') + '</a></div>' +
       '<div><h4>' + t('fContact') + '</h4>' +
       '<a href="tel:' + st.phone.replace(/\s/g, '') + '">' + st.phone + '</a>' +
       '<a href="tel:' + st.phone2.replace(/\s/g, '') + '">' + st.phone2 + '</a>' +
@@ -163,7 +178,7 @@
       '<span class="mut sm" style="display:block;padding:5px 0">' + esc(L(st, 'address')) + '</span>' +
       '<span class="mut sm" style="display:block">' + esc(L(st, 'workhours')) + '</span></div>' +
       '</div><div class="f-bot"><span>© 2026 MyDrone.uz — ' + t('fRights') + '</span>' +
-      '<span>' + t('fDemo') + ' · <a href="admin.html" style="display:inline;color:var(--acc)">Admin</a></span></div></div></footer>';
+      '<span>' + t('fDemo') + ' · <a href="/admin.html" style="display:inline;color:var(--acc)">Admin</a></span></div></div></footer>';
   }
 
   /* ---------- Sahifa: BOSH ---------- */
@@ -176,7 +191,7 @@
       '<section class="hero"><div class="hero-bg"><img src="' + IMG('hero-2.jpg') + '" alt=""></div><div class="wrap">' +
       '<span class="chip-live"><i class="dot"></i>' + t('heroChip') + '</span>' +
       '<h1>' + t('heroTitle') + '</h1><p>' + t('heroText') + '</p>' +
-      '<div class="hero-btns"><a class="btn btn-p" href="#/catalog">' + t('heroBtn1') + '</a>' +
+      '<div class="hero-btns"><a class="btn btn-p" href="/katalog">' + t('heroBtn1') + '</a>' +
       '<button class="btn btn-g" data-act="callback">' + ic.phone + t('heroBtn2') + '</button></div>' +
       '<div class="hero-stats"><div><b>1 200+</b><span class="mut sm">' + t('stat1') + '</span></div>' +
       '<div><b>' + P.length + '</b><span class="mut sm">' + t('stat2') + '</span></div>' +
@@ -190,23 +205,23 @@
       '</div></div>' +
 
       '<section><div class="wrap"><div class="sec-hd"><div><h2>' + t('secCats') + '</h2><p>' + t('secCatsS') + '</p></div>' +
-      '<a class="btn btn-ghost btn-sm" href="#/catalog">' + t('viewAll') + '</a></div>' +
+      '<a class="btn btn-ghost btn-sm" href="/katalog">' + t('viewAll') + '</a></div>' +
       '<div class="grid g-3">' + S.db.categories.map(c => {
         const cnt = S.db.products.filter(p => p.cat === c.id).length;
-        return '<a class="cat-card" href="#/catalog?cat=' + c.id + '"><img src="' + IMG(c.img) + '" alt="' + esc(L(c, 'name')) + '" loading="lazy">' +
+        return '<a class="cat-card" href="/katalog?cat=' + c.id + '"><img src="' + IMG(c.img) + '" alt="' + esc(L(c, 'name')) + '" loading="lazy">' +
           '<div class="ov"><h3>' + esc(L(c, 'name')) + '</h3><span>' + cnt + ' ' + (S.lang === 'ru' ? 'товаров' : 'ta mahsulot') + '</span></div></a>';
       }).join('') + '</div></div></section>' +
 
       '<section style="padding-top:0"><div class="wrap"><div class="sec-hd"><div><h2>' + t('secHits') + '</h2><p>' + t('secHitsS') + '</p></div>' +
-      '<a class="btn btn-ghost btn-sm" href="#/catalog?sort=pop">' + t('viewAll') + '</a></div>' + grid(hits) + '</div></section>' +
+      '<a class="btn btn-ghost btn-sm" href="/katalog?sort=pop">' + t('viewAll') + '</a></div>' + grid(hits) + '</div></section>' +
 
       '<section style="padding-top:0"><div class="wrap"><div class="banner">' +
       '<div style="flex:1;min-width:260px"><h3>' + t('fRef') + ' — ' + (S.lang === 'ru' ? 'зови друзей, получай бонусы' : "do'st taklif qiling, bonus oling") + '</h3>' +
       '<p>' + t('refHow') + '</p></div>' +
-      '<a class="btn btn-p" href="#/referral">' + t('more') + '</a></div></div></section>' +
+      '<a class="btn btn-p" href="/referal-dastur">' + t('more') + '</a></div></div></section>' +
 
       '<section style="padding-top:0"><div class="wrap"><div class="sec-hd"><div><h2>' + t('secNew') + '</h2><p>' + t('secNewS') + '</p></div>' +
-      '<a class="btn btn-ghost btn-sm" href="#/catalog?sort=new">' + t('viewAll') + '</a></div>' + grid(news) + '</div></section>' +
+      '<a class="btn btn-ghost btn-sm" href="/katalog?sort=new">' + t('viewAll') + '</a></div>' + grid(news) + '</div></section>' +
 
       '<section style="padding-top:0"><div class="wrap"><div class="sec-hd"><div><h2>' + t('secRev') + '</h2><p>' + t('secRevS') + '</p></div></div>' +
       '<div class="grid g-4">' + SEED.demoReviews.map(r =>
@@ -217,11 +232,11 @@
       '</div></div></section>' +
 
       '<section style="padding-top:0"><div class="wrap"><div class="sec-hd"><div><h2>' + t('secBlog') + '</h2><p>' + t('secBlogS') + '</p></div>' +
-      '<a class="btn btn-ghost btn-sm" href="#/blog">' + t('viewAll') + '</a></div>' +
+      '<a class="btn btn-ghost btn-sm" href="/blog">' + t('viewAll') + '</a></div>' +
       '<div class="grid g-3">' + S.db.posts.slice(0, 3).map(postCard).join('') + '</div></div></section>';
   }
 
-  const postCard = p => '<a class="post" href="#/blog/' + p.slug + '"><img src="' + IMG(p.img) + '" alt="" loading="lazy">' +
+  const postCard = p => '<a class="post" href="/blog/' + p.slug + '"><img src="' + IMG(p.img) + '" alt="" loading="lazy">' +
     '<div class="post-b"><span class="pc-cat">' + esc(L(p, 'cat')) + ' · ' + p.date + '</span>' +
     '<h3>' + esc(L(p, 'title')) + '</h3><p class="mut sm" style="margin:0">' + esc(L(p, 'lead')) + '</p></div></a>';
 
@@ -292,7 +307,7 @@
         '<button class="btn btn-g btn-sm" style="margin-top:14px" data-act="freset">' + t('reset') + '</button></div>') +
       '</div></div>';
 
-    return crumbs([{ label: t('home'), href: '#/' }, { label: t('catalog'), href: '#/catalog' }].concat(c ? [{ label: title }] : [])) +
+    return crumbs([{ label: t('home'), href: '/' }, { label: t('catalog'), href: '/katalog' }].concat(c ? [{ label: title }] : [])) +
       '<section style="padding-top:22px"><div class="wrap"><div class="sec-hd"><div><h2>' + esc(title) + '</h2>' +
       (c && !sub ? '<p>' + esc(c.subs.map(s => L(s, 'name')).join(' · ')) + '</p>' : '') + '</div></div>' + body + '</div></section>';
   }
@@ -306,8 +321,8 @@
     const inCart = S.cart.find(r => r.id === p.id);
     const similar = S.db.products.filter(x => x.cat === p.cat && x.id !== p.id).slice(0, 4);
 
-    return crumbs([{ label: t('home'), href: '#/' }, { label: t('catalog'), href: '#/catalog' },
-      { label: L(c, 'name'), href: '#/catalog?cat=' + p.cat }, { label: L(p, 'name') }]) +
+    return crumbs([{ label: t('home'), href: '/' }, { label: t('catalog'), href: '/katalog' },
+      { label: L(c, 'name'), href: '/katalog?cat=' + p.cat }, { label: L(p, 'name') }]) +
       '<section style="padding-top:20px"><div class="wrap"><div class="pd">' +
       '<div><div class="gal-main"><img id="gmain" src="' + IMG(p.imgs[0]) + '" alt="' + esc(L(p, 'name')) + '"></div>' +
       '<div class="gal-thumbs">' + p.imgs.map((im, i) =>
@@ -394,14 +409,14 @@
     const rows = S.cartRows();
     if (!rows.length) return '<div class="wrap"><div class="empty" style="padding:90px 20px">' + ic.cart.replace('width="20" height="20"', 'width="52" height="52"') +
       '<h3 style="margin:14px 0 6px">' + t('cartEmpty') + '</h3><p>' + t('cartEmptyS') + '</p>' +
-      '<a class="btn btn-p" style="margin-top:16px" href="#/catalog">' + t('toCatalog') + '</a></div></div>';
+      '<a class="btn btn-p" style="margin-top:16px" href="/katalog">' + t('toCatalog') + '</a></div></div>';
 
     const tot = calcTotals('courier', promoApplied, bonusApplied);
     return '<section><div class="wrap"><div class="sec-hd"><h2>' + t('cart') + ' <span class="mut" style="font-size:16px">(' + S.cartCount() + ')</span></h2></div>' +
       '<div style="display:grid;grid-template-columns:1fr 340px;gap:26px;align-items:start" class="cart-grid">' +
       '<div class="card">' + rows.map(r =>
-        '<div class="cart-row"><a href="#/p/' + r.p.slug + '"><img src="' + IMG(r.p.imgs[0]) + '" alt=""></a>' +
-        '<div><a href="#/p/' + r.p.slug + '"><b>' + esc(L(r.p, 'name')) + '</b></a>' +
+        '<div class="cart-row"><a href="/mahsulot/' + r.p.slug + '"><img src="' + IMG(r.p.imgs[0]) + '" alt=""></a>' +
+        '<div><a href="/mahsulot/' + r.p.slug + '"><b>' + esc(L(r.p, 'name')) + '</b></a>' +
         '<div style="margin:6px 0">' + stockBadge(r.p) + '</div>' +
         '<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">' +
         '<div class="qty" style="height:38px"><button data-act="cq-" data-id="' + r.id + '">−</button>' +
@@ -419,15 +434,15 @@
       (tot.bonusUsed ? '<div class="sum-row"><span class="mut">' + t('bonusUsed') + '</span><span style="color:var(--ok)">−' + money(tot.bonusUsed) + '</span></div>' : '') +
       '<div class="sum-row"><span class="mut">' + t('deliveryCost') + '</span><span>' + (tot.delivery ? money(tot.delivery) : t('free')) + '</span></div>' +
       '<div class="sum-row total"><span>' + t('total') + '</span><span>' + money(tot.total) + ' ' + t('currency') + '</span></div>' +
-      '<a class="btn btn-p btn-block" style="margin-top:14px" href="#/checkout">' + t('checkout') + '</a>' +
-      '<a class="btn btn-ghost btn-block" style="margin-top:9px" href="#/catalog">' + t('keepShopping') + '</a>' +
+      '<a class="btn btn-p btn-block" style="margin-top:14px" href="/buyurtma">' + t('checkout') + '</a>' +
+      '<a class="btn btn-ghost btn-block" style="margin-top:9px" href="/katalog">' + t('keepShopping') + '</a>' +
       '<div class="hint">' + money(S.db.settings.freeFrom) + ' ' + t('currency') + ' ' + t('freeHint') + '</div>' +
       '</div></div></div></section>';
   }
 
   /* ---------- Sahifa: CHECKOUT ---------- */
   function viewCheckout() {
-    if (!S.cartRows().length) { setTimeout(() => go('#/cart'), 0); return ''; }
+    if (!S.cartRows().length) { setTimeout(() => go('/savat'), 0); return ''; }
     const u = S.user || {};
     const tot = calcTotals('courier', promoApplied, bonusApplied);
     return '<section><div class="wrap"><div class="sec-hd"><h2>' + t('checkout') + '</h2></div>' +
@@ -475,7 +490,7 @@
       '<div class="sum-row"><span class="mut">' + t('deliveryCost') + '</span><span id="dlvsum">' + (tot.delivery ? money(tot.delivery) : t('free')) + '</span></div>' +
       '<div class="sum-row total"><span>' + t('total') + '</span><span id="totsum">' + money(tot.total) + ' ' + t('currency') + '</span></div>' +
       '<button type="submit" class="btn btn-p btn-block" style="margin-top:14px">' + t('confirmOrder') + '</button>' +
-      '<a class="btn btn-ghost btn-block" style="margin-top:9px" href="#/cart">' + t('backCart') + '</a>' +
+      '<a class="btn btn-ghost btn-block" style="margin-top:9px" href="/savat">' + t('backCart') + '</a>' +
       '</div></form></div></section>';
   }
   const fld = (name, label, val, type, req) =>
@@ -494,8 +509,8 @@
       (o ? '<div class="sum-row"><span class="mut">' + t('total') + '</span><b>' + money(o.total) + ' ' + t('currency') + '</b></div>' +
         '<div class="sum-row"><span class="mut">' + t('phone') + '</span><span>' + esc(o.phone) + '</span></div>' : '') + '</div>' +
       '<div style="display:flex;gap:10px;justify-content:center;margin-top:20px;flex-wrap:wrap">' +
-      '<a class="btn btn-p" href="#/account/orders">' + t('myOrders') + '</a>' +
-      '<a class="btn btn-g" href="#/catalog">' + t('keepShopping') + '</a></div></div></section>';
+      '<a class="btn btn-p" href="/kabinet/buyurtmalar">' + t('myOrders') + '</a>' +
+      '<a class="btn btn-g" href="/katalog">' + t('keepShopping') + '</a></div></div></section>';
   }
 
   /* ---------- Sahifa: KABINET ---------- */
@@ -504,11 +519,11 @@
   const ST_ORDER = ['new', 'confirmed', 'shipped', 'way', 'done'];
 
   function viewAccount(tab) {
-    if (!S.user) { setTimeout(() => go('#/login'), 0); return ''; }
+    if (!S.user) { setTimeout(() => go('/kirish'), 0); return ''; }
     const u = S.user;
     tab = tab || 'orders';
     const nav = ['orders', 'refProgram', 'favs', 'profile'].map(k => {
-      const href = { orders: '#/account/orders', refProgram: '#/account/ref', favs: '#/account/favs', profile: '#/account/profile' }[k];
+      const href = { orders: '/kabinet/buyurtmalar', refProgram: '/kabinet/referal', favs: '/kabinet/saqlanganlar', profile: '/kabinet/profil' }[k];
       const on = { orders: 'orders', refProgram: 'ref', favs: 'favs', profile: 'profile' }[k] === tab;
       return '<a href="' + href + '" class="' + (on ? 'on' : '') + '">' + t(k) + '</a>';
     }).join('') + '<a data-act="logout">' + t('logout') + '</a>';
@@ -518,9 +533,9 @@
       const mine = S.db.orders.filter(o => o.userId === u.id);
       body = mine.length ? mine.map(orderCard).join('') :
         '<div class="empty">' + ic.box.replace('width="20" height="20"', 'width="46" height="46"') + '<h3>' + t('noOrders') + '</h3>' +
-        '<a class="btn btn-p btn-sm" style="margin-top:14px" href="#/catalog">' + t('toCatalog') + '</a></div>';
+        '<a class="btn btn-p btn-sm" style="margin-top:14px" href="/katalog">' + t('toCatalog') + '</a></div>';
     } else if (tab === 'ref') {
-      const link = location.origin + location.pathname + '#/?ref=' + u.ref;
+      const link = location.origin + '/?ref=' + u.ref;
       body = '<div class="ref-box"><h3 style="font-size:19px">' + t('refProgram') + '</h3>' +
         '<p class="mut sm" style="margin:8px 0 0">' + t('refHow') + '</p>' +
         '<div class="ref-link"><input id="reflink" readonly value="' + esc(link) + '">' +
@@ -541,7 +556,7 @@
     } else if (tab === 'favs') {
       const list = S.favs().map(id => S.product(id)).filter(Boolean);
       body = list.length ? grid(list, 'g-3') : '<div class="empty">' + ic.heart.replace('width="17" height="17"', 'width="46" height="46"') +
-        '<h3>' + t('noFavs') + '</h3><a class="btn btn-p btn-sm" style="margin-top:14px" href="#/catalog">' + t('toCatalog') + '</a></div>';
+        '<h3>' + t('noFavs') + '</h3><a class="btn btn-p btn-sm" style="margin-top:14px" href="/katalog">' + t('toCatalog') + '</a></div>';
     } else {
       body = '<form class="card" id="pform" style="max-width:520px">' +
         fld('name', t('name'), u.name, 'text', true) +
@@ -564,7 +579,7 @@
       '<b style="margin-left:auto">' + money(o.total) + ' ' + t('currency') + '</b></div>' +
       '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">' + o.items.map(it => {
         const p = S.product(it.id); if (!p) return '';
-        return '<a href="#/p/' + p.slug + '" title="' + esc(L(p, 'name')) + '"><img src="' + IMG(p.imgs[0]) + '" style="width:58px;height:45px;object-fit:cover;border-radius:8px"></a>';
+        return '<a href="/mahsulot/' + p.slug + '" title="' + esc(L(p, 'name')) + '"><img src="' + IMG(p.imgs[0]) + '" style="width:58px;height:45px;object-fit:cover;border-radius:8px"></a>';
       }).join('') + '</div>' +
       (o.status === 'cancel' ? '' : '<div class="track">' + ST_ORDER.map((s, i) =>
         '<div class="' + (i <= idx ? 'done' : '') + '">' + t(ST_MAP[s][0]) + '</div>').join('') + '</div>') +
@@ -607,7 +622,7 @@
     if (name === 'referral') return '<section><div class="wrap">' +
       '<div class="banner" style="margin-bottom:26px"><div style="flex:1;min-width:260px">' +
       '<h3 style="font-size:24px">' + t('fRef') + '</h3><p>' + t('refHow') + '</p></div>' +
-      '<a class="btn btn-p" href="' + (S.user ? '#/account/ref' : '#/login') + '">' +
+      '<a class="btn btn-p" href="' + (S.user ? '/kabinet/referal' : '/kirish') + '">' +
       (S.user ? t('yourRefLink') : t('signup')) + '</a></div>' +
       '<div class="grid g-3">' +
       [[ru ? 'Поделитесь ссылкой' : 'Havolani ulashing', ru ? 'В личном кабинете есть персональная ссылка и код. Отправьте её другу в Telegram или соцсети.' : "Shaxsiy kabinetda individual havola va kod bor. Uni do'stingizga Telegram yoki ijtimoiy tarmoqda yuboring."],
@@ -652,7 +667,7 @@
   function viewPost(slug) {
     const p = S.post(slug);
     if (!p) return '<div class="wrap"><div class="empty">' + ic.empty + '<h3>' + t('nothing') + '</h3></div></div>';
-    return crumbs([{ label: t('home'), href: '#/' }, { label: t('fBlog'), href: '#/blog' }, { label: L(p, 'title') }]) +
+    return crumbs([{ label: t('home'), href: '/' }, { label: t('fBlog'), href: '/blog' }, { label: L(p, 'title') }]) +
       '<section style="padding-top:18px"><div class="wrap" style="max-width:820px">' +
       '<span class="pc-cat">' + esc(L(p, 'cat')) + ' · ' + t('published') + ' ' + p.date + '</span>' +
       '<h1 style="font-size:clamp(24px,4vw,36px);margin:10px 0 18px">' + esc(L(p, 'title')) + '</h1>' +
@@ -666,31 +681,132 @@
       '</div></section>';
   }
 
+
+  /* ---------- SEO: har bir sahifa uchun meta ma'lumot ---------- */
+  function headTag(sel, make) {
+    let el = document.head.querySelector(sel);
+    if (!el) { el = make(); document.head.appendChild(el); }
+    return el;
+  }
+  function setMeta(m) {
+    const url = location.origin + location.pathname + (location.search || '');
+    const img = location.origin + '/' + (m.img || 'assets/img/hero-2.jpg');
+    document.title = m.title;
+    headTag('meta[name="description"]', () => Object.assign(document.createElement('meta'), { name: 'description' })).setAttribute('content', m.desc);
+    headTag('link[rel="canonical"]', () => Object.assign(document.createElement('link'), { rel: 'canonical' })).setAttribute('href', url);
+    [['og:title', m.title], ['og:description', m.desc], ['og:url', url], ['og:image', img],
+     ['og:type', m.type || 'website']].forEach(([prop, val]) => {
+      headTag('meta[property="' + prop + '"]', () => { const e = document.createElement('meta'); e.setAttribute('property', prop); return e; })
+        .setAttribute('content', val);
+    });
+    headTag('meta[property="og:locale"]', () => { const e = document.createElement('meta'); e.setAttribute('property', 'og:locale'); return e; })
+      .setAttribute('content', S.lang === 'ru' ? 'ru_RU' : 'uz_UZ');
+    headTag('meta[name="robots"]', () => Object.assign(document.createElement('meta'), { name: 'robots' }))
+      .setAttribute('content', m.noindex ? 'noindex,nofollow' : 'index,follow');
+    const old = document.getElementById('ld-page');
+    if (old) old.remove();
+    if (m.ld) {
+      const sc = document.createElement('script');
+      sc.type = 'application/ld+json'; sc.id = 'ld-page';
+      sc.textContent = JSON.stringify(m.ld);
+      document.head.appendChild(sc);
+    }
+  }
+
+  /* Sahifaga qarab meta ma'lumotni hisoblash */
+  function metaFor(p0, parts, q) {
+    const ru = S.lang === 'ru', B = 'MyDrone.uz';
+    const baseDesc = ru
+      ? 'Дроны, FPV, агродроны, экшн-камеры и умные гаджеты напрямую из Китая. Официальная гарантия, доставка по Узбекистану, оплата Click/Payme.'
+      : "Dronlar, FPV, agrodronlar, action-kameralar va aqlli gadjetlar — to'g'ridan-to'g'ri Xitoydan. Rasmiy kafolat, O'zbekiston bo'ylab yetkazib berish, Click/Payme orqali to'lov.";
+
+    if (p0 === 'mahsulot') {
+      const pr = S.bySlug(parts[1]);
+      if (pr) return {
+        title: L(pr, 'name') + ' — ' + (ru ? 'цена и характеристики' : 'narxi va xususiyatlari') + ' | ' + B,
+        desc: L(pr, 'short') + ' ' + money(pr.price) + ' ' + t('currency') + '.',
+        img: 'assets/img/' + pr.imgs[0], type: 'product',
+        ld: {
+          '@context': 'https://schema.org', '@type': 'Product',
+          name: L(pr, 'name'), sku: pr.id,
+          description: L(pr, 'short'),
+          image: pr.imgs.map(i => location.origin + '/assets/img/' + i),
+          brand: { '@type': 'Brand', name: pr.brand },
+          offers: {
+            '@type': 'Offer', url: location.origin + location.pathname,
+            priceCurrency: 'UZS', price: pr.price,
+            availability: pr.stock === 'in' ? 'https://schema.org/InStock'
+              : pr.stock === 'pre' ? 'https://schema.org/PreOrder' : 'https://schema.org/OutOfStock',
+            seller: { '@type': 'Organization', name: B }
+          }
+        }
+      };
+    }
+    if (p0 === 'katalog') {
+      const c = q.cat ? S.category(q.cat) : null;
+      const n = S.db.products.filter(x => !q.cat || x.cat === q.cat).length;
+      const nm = c ? L(c, 'name') : t('catalog');
+      return { title: nm + ' — ' + (ru ? 'купить в Ташкенте' : 'Toshkentda sotib olish') + ' | ' + B,
+        desc: nm + ': ' + n + (ru ? ' товаров с официальной гарантией. ' : ' ta mahsulot, rasmiy kafolat bilan. ') + baseDesc,
+        img: c ? 'assets/img/' + c.img : null };
+    }
+    if (p0 === 'blog' && parts[1]) {
+      const b = S.post(parts[1]);
+      if (b) return { title: L(b, 'title') + ' | ' + B + ' blog', desc: L(b, 'lead'),
+        img: 'assets/img/' + b.img, type: 'article' };
+    }
+    const titles = {
+      '': (ru ? 'MyDrone.uz — импорт дронов и техники из Китая | Ташкент'
+              : "MyDrone.uz — Xitoydan dron va texnika importi | Toshkent"),
+      'blog': t('fBlog') + ' — ' + B,
+      'savollar': t('fFaq') + ' — ' + B,
+      'referal-dastur': t('fRef') + ' — ' + B,
+      'yetkazib-berish': t('fDelivery') + ' — ' + B,
+      'kafolat': t('fWarranty') + ' — ' + B,
+      'biz-haqimizda': t('fAboutUs') + ' — ' + B,
+      'aloqa': t('fContact') + ' — ' + B,
+      'savat': t('cart') + ' — ' + B,
+      'buyurtma': t('checkout') + ' — ' + B,
+      'kabinet': t('account') + ' — ' + B,
+      'kirish': t('signin') + ' — ' + B
+    };
+    if (p0 === 'buyurtma' && parts[1]) {
+      return { title: t('orderOk') + ' ' + parts[1] + ' — ' + B, desc: t('orderOkS'), noindex: true };
+    }
+    const priv = ['savat', 'buyurtma', 'kabinet', 'kirish'].includes(p0);
+    /* noma'lum manzil (404) ham indekslanmasin — "soft 404" bo'lmasligi uchun */
+    return { title: titles[p0] || (t('nothing') + ' — ' + B), desc: baseDesc, noindex: priv || !titles[p0] };
+  }
+
   /* ---------- Router ---------- */
   function route() {
-    const { parts, q } = parseHash();
+    const { parts, q } = parseRoute();
     if (q.ref) { sessionStorage.setItem('dm_ref_code', q.ref); }
     const main = $('#app');
     const p0 = parts[0] || '';
+    /* uz manzil → ichki sahifa nomi */
+    const STATIC = { 'yetkazib-berish': 'delivery', 'kafolat': 'warranty', 'biz-haqimizda': 'about',
+      'aloqa': 'contact', 'savollar': 'faq', 'referal-dastur': 'referral' };
+    const ACC = { 'buyurtmalar': 'orders', 'referal': 'ref', 'saqlanganlar': 'favs', 'profil': 'profile' };
     let html = '';
     if (!p0) html = viewHome();
-    else if (p0 === 'catalog') html = viewCatalog(q);
-    else if (p0 === 'p') html = viewProduct(parts[1]);
-    else if (p0 === 'cart') html = viewCart();
-    else if (p0 === 'checkout') html = viewCheckout();
-    else if (p0 === 'ok') html = viewOrderOk(parts[1]);
-    else if (p0 === 'account') html = viewAccount(parts[1]);
-    else if (p0 === 'login') html = viewLogin();
+    else if (p0 === 'katalog') html = viewCatalog(q);
+    else if (p0 === 'mahsulot') html = viewProduct(parts[1]);
+    else if (p0 === 'savat') html = viewCart();
+    else if (p0 === 'buyurtma') html = parts[1] ? viewOrderOk(parts[1]) : viewCheckout();
+    else if (p0 === 'kabinet') html = viewAccount(ACC[parts[1]] || 'orders');
+    else if (p0 === 'kirish') html = viewLogin();
     else if (p0 === 'blog') html = parts[1] ? viewPost(parts[1]) : viewBlog();
-    else if (['delivery', 'warranty', 'about', 'contact', 'faq', 'referral'].includes(p0)) html = viewStatic(p0);
+    else if (STATIC[p0]) html = viewStatic(STATIC[p0]);
     else html = '<div class="wrap"><div class="empty" style="padding:80px 20px">' + ic.empty +
-      '<h3>404 — ' + t('nothing') + '</h3><a class="btn btn-p btn-sm" style="margin-top:14px" href="#/">' + t('home') + '</a></div></div>';
+      '<h3>404 — ' + t('nothing') + '</h3><a class="btn btn-p btn-sm" style="margin-top:14px" href="/">' + t('home') + '</a></div></div>';
 
     main.innerHTML = html;
+    setMeta(metaFor(p0, parts, q));
     renderHeader();
     window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
     afterRender();
-    $$('nav.cats a').forEach(a => { if (a.getAttribute('href') === '#/catalog?cat=' + (q.cat || '')) a.classList.add('on'); });
+    $$('nav.cats a').forEach(a => { if (a.getAttribute('href') === '/katalog?cat=' + (q.cat || '')) a.classList.add('on'); });
   }
 
   /* ---------- Render'dan keyingi bog'lanishlar ---------- */
@@ -703,11 +819,11 @@
         const box = $('#ac');
         if (!qi.value.trim() || !res.length) { box.innerHTML = ''; box.className = ''; return; }
         box.className = 'ac';
-        box.innerHTML = res.map(p => '<a href="#/p/' + p.slug + '"><img src="' + IMG(p.imgs[0]) + '">' +
+        box.innerHTML = res.map(p => '<a href="/mahsulot/' + p.slug + '"><img src="' + IMG(p.imgs[0]) + '">' +
           '<span style="flex:1"><b class="sm">' + esc(L(p, 'name')) + '</b><br><span class="mut xs">' + money(p.price) + ' ' + t('currency') + '</span></span></a>').join('');
       });
       qi.addEventListener('keydown', e => {
-        if (e.key === 'Enter') { go('#/catalog?q=' + encodeURIComponent(qi.value)); $('#ac').innerHTML = ''; qi.blur(); }
+        if (e.key === 'Enter') { go('/katalog?q=' + encodeURIComponent(qi.value)); $('#ac').innerHTML = ''; qi.blur(); }
       });
       qi.addEventListener('blur', () => setTimeout(() => { const b = $('#ac'); if (b) { b.innerHTML = ''; b.className = ''; } }, 200));
     }
@@ -755,7 +871,7 @@
       const d = Object.fromEntries(new FormData(fin));
       const u = S.login(d.email, d.pass);
       if (!u) { toast(t('badLogin'), 'err'); return; }
-      toast(t('welcome') + ', ' + esc(u.name) + '!', 'ok'); go('#/account/orders');
+      toast(t('welcome') + ', ' + esc(u.name) + '!', 'ok'); go('/kabinet/buyurtmalar');
     });
     const fup = $('#fup');
     if (fup) fup.addEventListener('submit', e => {
@@ -765,7 +881,7 @@
       const r = S.register(d.name, d.email, d.pass, d.phone, d.ref);
       if (r.err) { toast(t('exists'), 'err'); return; }
       if (d.ref) toast(t('refApplied'), 'ok');
-      toast(t('welcome') + ', ' + esc(r.user.name) + '!', 'ok'); go('#/account/ref');
+      toast(t('welcome') + ', ' + esc(r.user.name) + '!', 'ok'); go('/kabinet/referal');
     });
 
     /* profil */
@@ -794,10 +910,10 @@
   }
 
   function setQ(patch) {
-    const { q } = parseHash();
+    const { q } = parseRoute();
     const next = { ...q, ...patch };
     Object.keys(next).forEach(k => { if (!next[k]) delete next[k]; });
-    go('#/catalog' + (Object.keys(next).length ? '?' + new URLSearchParams(next) : ''));
+    go('/katalog' + (Object.keys(next).length ? '?' + new URLSearchParams(next) : ''));
   }
 
   /* ---------- Buyurtmani yuborish ---------- */
@@ -824,7 +940,7 @@
     });
     promoApplied = null; bonusApplied = 0;
     toast((S.lang === 'ru' ? 'SMS с подтверждением отправлен на ' : 'Tasdiqlash SMS yuborildi: ') + esc(d.phone), 'ok');
-    go('#/ok/' + order.id);
+    go('/buyurtma/' + order.id);
   }
 
   /* ---------- Global klik hodisalari ---------- */
@@ -837,7 +953,7 @@
       const qty = $('#pqty') ? Math.max(1, +$('#pqty').value || 1) : 1;
       S.addToCart(id, act === 'buy' ? qty : (el.dataset.qty ? qty : 1));
       renderHeader();
-      if (act === 'buy') { go('#/cart'); return; }
+      if (act === 'buy') { go('/savat'); return; }
       toast(ic.check + ' ' + t('addedCart'), 'ok');
       if ($('#pqty')) { const b = el; b.innerHTML = ic.cart + t('inCart'); }
     }
@@ -853,7 +969,7 @@
     else if (act === 'q-') { const i = $('#pqty'); i.value = Math.max(1, (+i.value || 1) - 1); }
     else if (act === 'gal') { $('#gmain').src = el.src; $$('.gal-thumbs img').forEach(x => x.classList.remove('on')); el.classList.add('on'); }
     else if (act === 'ftoggle') { $('#filters').classList.toggle('open'); }
-    else if (act === 'freset') { go('#/catalog'); }
+    else if (act === 'freset') { go('/katalog'); }
     else if (act === 'fprice') { setQ({ min: $('#fmin').value, max: $('#fmax').value }); }
     else if (act === 'promo') {
       const code = String($('#promo').value || '').trim().toUpperCase();
@@ -871,7 +987,7 @@
       if (navigator.share) { navigator.share({ url }).catch(() => {}); }
       else if (navigator.clipboard) { navigator.clipboard.writeText(url).then(() => toast(t('linkCopied'), 'ok')); }
     }
-    else if (act === 'logout') { S.logout(); toast(S.lang === 'ru' ? 'Вы вышли' : 'Tizimdan chiqdingiz'); go('#/'); route(); }
+    else if (act === 'logout') { S.logout(); toast(S.lang === 'ru' ? 'Вы вышли' : 'Tizimdan chiqdingiz'); go('/'); route(); }
     else if (act === 'close-modal') closeModal();
     else if (act === 'callback') openCallback();
     else if (act === 'addrev') openReview(id);
@@ -894,7 +1010,7 @@
   }
 
   function openReview(pid) {
-    if (!S.user) { toast(t('needLogin'), 'err'); go('#/login'); return; }
+    if (!S.user) { toast(t('needLogin'), 'err'); go('/kirish'); return; }
     modal(S.lang === 'ru' ? 'Оставить отзыв' : 'Sharh qoldirish',
       '<form id="frev"><div class="field"><label>' + (S.lang === 'ru' ? 'Оценка' : 'Baho') + '</label>' +
       '<select name="rate">' + [5, 4, 3, 2, 1].map(n => '<option value="' + n + '">' + '★'.repeat(n) + '</option>').join('') + '</select></div>' +
@@ -937,6 +1053,20 @@
       '<a class="f-tg" href="https://t.me/' + st.telegram + '" target="_blank" rel="noopener" title="Telegram">' + ic.tg + '</a>';
     document.body.appendChild(d);
   }
+
+  /* ---------- Eski #/ havolalarni yangi manzilga o'tkazish ---------- */
+  (function migrateHash() {
+    const h = location.hash;
+    if (!h.startsWith('#/')) return;
+    const map = { 'catalog': 'katalog', 'p': 'mahsulot', 'cart': 'savat', 'checkout': 'buyurtma',
+      'ok': 'buyurtma', 'account': 'kabinet', 'login': 'kirish', 'faq': 'savollar',
+      'referral': 'referal-dastur', 'delivery': 'yetkazib-berish', 'warranty': 'kafolat',
+      'about': 'biz-haqimizda', 'contact': 'aloqa', 'blog': 'blog',
+      'orders': 'buyurtmalar', 'ref': 'referal', 'favs': 'saqlanganlar', 'profile': 'profil' };
+    const [path, qs] = h.slice(2).split('?');
+    const parts = path.split('/').filter(Boolean).map(x => map[x] || x);
+    history.replaceState({}, '', '/' + parts.join('/') + (qs ? '?' + qs : ''));
+  })();
 
   /* ---------- Boot ---------- */
   document.documentElement.lang = S.lang;

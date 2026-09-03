@@ -3,7 +3,7 @@
   const S = window.Store, money = n => S.money(n);
   const $ = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => [...(r || document).querySelectorAll(s)];
-  const IMG = f => 'assets/img/' + f;
+  const IMG = f => '/assets/img/' + f;
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const root = $('#root');
   const AUTH = 'dm_admin_v1';
@@ -44,7 +44,7 @@
       '<form id="fl" style="margin-top:16px">' + fld('email', 'Email', 'admin@mydrone.uz', 'email') + fld('pass', 'Parol', 'admin12345', 'password') +
       '<button class="btn btn-p btn-block" type="submit">Kirish</button>' +
       '<div class="hint">Demo: <b>admin@mydrone.uz</b> / <b>admin12345</b></div></form>' +
-      '<a class="btn btn-ghost btn-block btn-sm" style="margin-top:10px" href="index.html">← Saytga qaytish</a>' +
+      '<a class="btn btn-ghost btn-block btn-sm" style="margin-top:10px" href="/">← Saytga qaytish</a>' +
       '</div></div>';
     $('#fl').addEventListener('submit', e => {
       e.preventDefault();
@@ -72,7 +72,7 @@
       PAGES.map(p => '<a data-p="' + p[0] + '" class="' + (page === p[0] ? 'on' : '') + '">' + p[1] +
         (counts[p[0]] != null ? '<span class="n">' + counts[p[0]] + '</span>' : '') + '</a>').join('') +
       '<div class="sep"></div>' +
-      '<a href="index.html" target="_blank">Saytni ochish ↗</a>' +
+      '<a href="/" target="_blank">Saytni ochish ↗</a>' +
       '<a data-act="reset">Demo bazani tiklash</a>' +
       '<a data-act="theme">' + (S.effTheme() === 'dark' ? "☀ Yorug' rejim" : "☾ Qorong'i rejim") + '</a>' +
       '<a data-act="exit">Chiqish</a>' +
