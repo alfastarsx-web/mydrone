@@ -178,7 +178,11 @@
       '<span class="mut sm" style="display:block;padding:5px 0">' + esc(L(st, 'address')) + '</span>' +
       '<span class="mut sm" style="display:block">' + esc(L(st, 'workhours')) + '</span></div>' +
       '</div><div class="f-bot"><span>© 2026 MyDrone.uz — ' + t('fRights') + '</span>' +
-      '<span>' + t('fDemo') + ' · <a href="/admin.html" style="display:inline;color:var(--acc)">Admin</a></span></div></div></footer>';
+      '<span>' + t('fDemo') +
+      /* Admin panel faqat lokal ishlab chiqishda ko'rinadi — prodga chiqarilmaydi */
+      (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)
+        ? ' · <a href="/admin.html" style="display:inline;color:var(--acc)">Admin</a>' : '') +
+      '</span></div></div></footer>';
   }
 
   /* ---------- Sahifa: BOSH ---------- */
