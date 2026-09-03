@@ -83,4 +83,12 @@ tar --exclude='./.git' --exclude='./.github' --exclude='./.claude' \
 chown -R www-data:www-data "$DIR" 2>/dev/null || true
 
 echo "  ko'chirildi: $(find "$DIR" -type f | wc -l) ta fayl"
+
+# ---------- Backend ----------
+if [ "${SKIP_BACKEND:-0}" = "1" ]; then
+  say "Backend o'tkazib yuborildi (SKIP_BACKEND=1)"
+else
+  bash "$SRC/deploy/backend-deploy.sh"
+fi
+
 say "Tayyor"

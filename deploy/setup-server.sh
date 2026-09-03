@@ -103,6 +103,17 @@ GZIP = '' if has_gzip else """
 """
 
 EXTRA = A + "\n" + GZIP + """
+    # --- Backend API (NestJS, 4010-port) ---
+    location /api/ {
+        proxy_pass http://127.0.0.1:4010;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+
     location = /admin.html {
         auth_basic "MyDrone admin";
         auth_basic_user_file /etc/nginx/.htpasswd-mydrone;
